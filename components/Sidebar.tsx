@@ -67,7 +67,7 @@ const IconMap: Record<string, React.FC<any>> = {
   Users
 };
 
-// Knot Meter Component with Drag Penalty
+// Knot Meter Component with Signal Translation Protocol
 const KnotMeter = () => {
     const isSubmerged = useAppStore(state => state.isSubmerged);
     const isDragDetected = useAppStore(state => state.isDragDetected); // Now driven by App.tsx
@@ -118,13 +118,47 @@ const KnotMeter = () => {
         }
     }, [dragPenalty, baseSpeed]);
 
+    // Signal Translation Protocol
+    let signal = 'HEAVY SEAS';
+    let signalColor = 'text-amber-500'; // Warning Amber
+    
+    if (speed >= 30) {
+        signal = 'FULL SAIL';
+        signalColor = 'text-emerald-500'; // Vibrant Green
+    } else if (speed >= 15) {
+        signal = 'CRUISING';
+        signalColor = 'text-amber-700'; // Soft Brass
+    }
+
+    if (isDrifting) {
+        signal = 'DRIFTING';
+        signalColor = 'text-red-500';
+    }
+
+    // Mechanical Tooltip Calculation
+    const fps = Math.round(speed * 1.66);
+    const load = Math.max(0, Math.min(100, 100 - (speed * 2.8))).toFixed(0);
+
     return (
-        <div className="flex flex-col items-end">
-            <div className="flex items-center gap-2 font-mono text-xs text-slate-500 select-none" title="Hull Speed">
-                 <ActivityIcon className={`w-3 h-3 ${speed > 13 ? 'text-blue-600 animate-pulse' : 'text-slate-400'}`} />
-                 <span className="font-bold">{isDrifting ? '0.0' : Math.max(0, speed).toFixed(1)} kts</span>
+        <div 
+            className="flex flex-col items-end group/telemetry cursor-help" 
+            title={`${speed.toFixed(1)} kts ≈ ${fps} FPS (Engine Load: ${load}%)`}
+        >
+            <div className="flex items-center gap-2 font-mono text-xs text-slate-500 select-none">
+                 <ActivityIcon className={`w-3 h-3 ${speed > 30 ? 'text-emerald-500 animate-pulse' : (speed > 15 ? 'text-amber-600' : 'text-slate-400')}`} />
+                 <span className="font-bold flex items-center gap-2">
+                    <span>{isDrifting ? '0.0' : speed.toFixed(1)} kts</span>
+                    <span className="text-slate-300 opacity-50">/</span> 
+                    <span className={`${signalColor} font-black text-[10px] tracking-wide uppercase`}>
+                        {isDrifting ? 'DRIFTING' : signal}
+                    </span>
+                 </span>
             </div>
-            {(isDragDetected || isDrifting) && <span className="text-[9px] text-red-500 font-bold uppercase tracking-wider">{isDrifting ? 'DRIFTING' : 'CARGO LOADING...'}</span>}
+            {isDragDetected && !isDrifting && (
+                <span className="text-[9px] text-red-500 font-bold uppercase tracking-wider animate-pulse">
+                    RESISTANCE DETECTED
+                </span>
+            )}
         </div>
     )
 }
