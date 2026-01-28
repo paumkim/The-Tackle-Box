@@ -35,7 +35,8 @@ import {
   HelpCircle,
   BarChart3,
   Mail,
-  Slack
+  Slack,
+  Activity
 } from 'lucide-react';
 import { ViewState, DEFAULT_NAV_ITEMS, NavItem, UserRole, Contact } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -46,6 +47,7 @@ import { db } from '../db';
 import { NotificationManager } from '../utils/notifications';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Parrot } from './Parrot';
+import { Diagnostics } from '../utils/diagnostics';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -66,91 +68,69 @@ const IconMap: Record<string, React.FC<any>> = {
   Users
 };
 
-// Signal Lamp Component - The Brass Sync Indicator
-const SignalLamp: React.FC = () => {
-    const signalMode = useAppStore(state => state.signalMode);
-    const setSignalMode = useAppStore(state => state.setSignalMode);
-    const [cssClass, setCssClass] = useState('idle');
+// Telemetry Deck (The Heart Rate Monitor)
+const TelemetryDeck: React.FC<{ onClick?: () => void }> = ({ onClick }) => {
+    const currentFPS = useAppStore(state => state.currentFPS);
+    const developerMode = useAppStore(state => state.developerMode);
 
-    useEffect(() => {
-        switch (signalMode) {
-            case 'IDLE': setCssClass('idle'); break;
-            case 'SYNCING': setCssClass('syncing'); break;
-            case 'PROCESSING': setCssClass('processing'); break;
-            case 'ERROR': setCssClass('error'); break;
-            case 'SUCCESS': 
-                setCssClass('success'); 
-                // Auto-reset success to idle after flash
-                setTimeout(() => setSignalMode('IDLE'), 800);
-                break;
-        }
-    }, [signalMode, setSignalMode]);
-
-    const getTooltip = () => {
-        switch(signalMode) {
-            case 'SYNCING': return 'Link: Syncing Data...';
-            case 'PROCESSING': return 'Link: Thinking...';
-            case 'ERROR': return 'Link: Dead End';
-            case 'SUCCESS': return 'Link: Data Secured';
-            default: return 'Link: Idle';
-        }
+    let status = "HEAVY SEAS";
+    let colorClass = "text-red-500";
+    let strokeColor = "#ef4444";
+    
+    if (currentFPS >= 60) {
+        status = "FULL SAIL";
+        colorClass = "text-emerald-500";
+        strokeColor = "#10b981";
+    } else if (currentFPS >= 30) {
+        status = "STEADY AS SHE GOES";
+        colorClass = "text-blue-500";
+        strokeColor = "#3b82f6";
     }
 
     return (
         <div 
-            className={`signal-lamp ${cssClass}`} 
-            title={getTooltip()}
-        ></div>
+            onClick={developerMode ? onClick : undefined}
+            className={`flex items-center gap-3 transition-opacity opacity-80 hover:opacity-100 ${developerMode ? 'cursor-pointer' : 'cursor-default'}`}
+            title={developerMode ? "Open Diagnostic HUD" : `Engine Speed: ${currentFPS} FPS`}
+        >
+            {/* Clinical ECG Monitor */}
+            <div className="h-8 w-16 relative overflow-hidden bg-slate-50/50 rounded border border-slate-200 shadow-inner flex items-center justify-center">
+                <svg className="w-full h-full p-1" viewBox="0 0 50 20" preserveAspectRatio="none">
+                    {/* The Pulse Line */}
+                    <motion.path 
+                        d="M0,10 L10,10 L15,5 L20,15 L25,10 L50,10" 
+                        fill="none" 
+                        stroke={strokeColor} 
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ 
+                            pathLength: [0, 1, 1], 
+                            opacity: [0, 1, 0],
+                            pathOffset: [0, 0, 1]
+                        }}
+                        transition={{ 
+                            duration: 1.5, 
+                            repeat: Infinity, 
+                            ease: "linear",
+                            times: [0, 0.8, 1]
+                        }}
+                    />
+                </svg>
+            </div>
+            
+            <div className="flex flex-col items-end">
+                <div className={`font-mono font-bold text-sm ${colorClass} leading-none tabular-nums`}>
+                    {currentFPS} FPS
+                </div>
+                <div className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-0.5 whitespace-nowrap">
+                    {status}
+                </div>
+            </div>
+        </div>
     );
 };
-
-// Knot Meter Component with Stealth Throttling
-const KnotMeter: React.FC<{ isRailActive: boolean }> = ({ isRailActive }) => {
-    const isDragDetected = useAppStore(state => state.isDragDetected); 
-    const currentSpeed = useAppStore(state => state.currentSpeed); // Driven by Diagnostics
-    
-    // Signal Translation Protocol
-    let signal = 'HEAVY SEAS';
-    let signalColor = 'text-amber-500'; // Warning Amber
-    
-    if (currentSpeed >= 15) {
-        signal = 'FULL SAIL';
-        signalColor = 'text-emerald-500'; // Vibrant Green
-    } else if (currentSpeed >= 10) {
-        signal = 'CRUISING';
-        signalColor = 'text-amber-700'; // Soft Brass
-    } else {
-        signal = 'DRAG';
-        signalColor = 'text-red-500';
-    }
-
-    // Mechanical Tooltip Calculation
-    const fps = Math.round((currentSpeed / 18.5) * 60); // Reverse engineer FPS for display
-    const load = Math.max(0, Math.min(100, 100 - (currentSpeed * 2.8))).toFixed(0);
-
-    return (
-        <div 
-            className="flex flex-col items-end group/telemetry cursor-help" 
-            title={`Real Performance: ~${fps} FPS (CPU Load: ${load}%)`}
-        >
-            <div className="flex items-center gap-2 font-mono text-xs text-slate-500 select-none">
-                 <ActivityIcon className={`w-3 h-3 ${currentSpeed > 15 ? 'text-emerald-500' : (currentSpeed > 10 ? 'text-amber-600' : 'text-red-500 animate-pulse')}`} />
-                 <span className="font-bold flex items-center gap-2">
-                    <span>{currentSpeed.toFixed(1)} kts</span>
-                    <span className="text-slate-300 opacity-50">/</span> 
-                    <span className={`${signalColor} font-black text-[10px] tracking-wide uppercase`}>
-                        {signal}
-                    </span>
-                 </span>
-            </div>
-            {isDragDetected && (
-                <span className="text-[9px] text-red-500 font-bold uppercase tracking-wider animate-pulse">
-                    RESISTANCE DETECTED
-                </span>
-            )}
-        </div>
-    )
-}
 
 // Crew Selector (Lazy Loaded)
 const CrewSelector: React.FC<{ onSelect: (contact: Contact) => void, onClose: () => void }> = ({ onSelect, onClose }) => {
@@ -221,18 +201,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isHolding, setIsHolding] = useState(false);
   const holdIntervalRef = useRef<number | null>(null);
   const HOLD_DURATION = 3000; // 3 seconds
-
-  // Simulate Background Sync (The Silent Courier) - Global Engine
-  const setSignalMode = useAppStore(state => state.setSignalMode);
-  useEffect(() => {
-      const syncInterval = setInterval(() => {
-          setSignalMode('SYNCING');
-          // Simulate fetch delay
-          setTimeout(() => setSignalMode('SUCCESS'), 2000); 
-      }, 60000); // Pulse every 60s
-      
-      return () => clearInterval(syncInterval);
-  }, [setSignalMode]);
 
   const getRoleLabel = (role: string | null) => {
       switch(role) {
@@ -389,6 +357,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   onClick={() => {
                       if (item.id === ViewState.SETTINGS) {
+                          Diagnostics.info("Sidebar", "Requesting Settings Toggle");
                           setSettingsOpen(true);
                       } else {
                           onChangeView(item.id);
@@ -573,12 +542,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <Parrot />
                 
                 <div className="flex flex-col items-end gap-1 flex-1">
-                    {/* The Radio Room (Signal Row) */}
+                    {/* The Radio Room (Signal Row) - Clean Deck, no blinking dot */}
                     <div className="flex items-center gap-2 mb-1 opacity-60 hover:opacity-100 cursor-help" title="Radio Room: Signal Activity">
                         <div className="flex -space-x-1">
                             <div className="relative">
                                 <Slack className="w-3 h-3 text-slate-400" />
-                                <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-red-500 rounded-full border border-white"></div>
                             </div>
                             <div className="relative">
                                 <Mail className="w-3 h-3 text-slate-400" />
@@ -587,32 +555,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 <MessageSquare className="w-3 h-3 text-slate-400" />
                             </div>
                         </div>
-                        <span className="text-[9px] font-bold text-slate-400">1 SIGNAL</span>
                     </div>
 
                     <div className="flex items-center justify-end w-full gap-3">
-                        <SignalLamp />
-                        <KnotMeter isRailActive={isRailActive} />
+                        <TelemetryDeck onClick={onToggleDevOverlay} />
                     </div>
-                    <div className="w-full border-t border-slate-200 my-1"></div>
-                    <button 
-                      onClick={onToggleDevOverlay}
-                      className={`flex items-center gap-1 shrink-0 text-xs ${isDevOverlayActive ? 'text-red-500 font-bold' : 'text-slate-400 hover:text-slate-600'}`}
-                      title="Toggle Tangled Lines (Dev Overlay)"
-                    >
-                      <Bug className="w-3 h-3" />
-                      v1.9
-                    </button>
                 </div>
               </div>
             ) : (
-              <button 
-                onClick={onToggleDevOverlay}
-                className={`${isDevOverlayActive ? 'text-red-500' : 'text-slate-400'} hover:text-slate-600`}
-                title="Dev Overlay"
-              >
-                <Bug className="w-4 h-4" />
-              </button>
+              <Activity className="w-4 h-4 text-slate-400" />
             )}
           </div>
         </div>

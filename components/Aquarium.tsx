@@ -43,7 +43,7 @@ export const Aquarium: React.FC = () => {
   useEffect(() => {
       const duration = performance.now() - renderStart.current;
       if (duration > 16) {
-          Diagnostics.log('WARN', 'Aquarium', `Heavy Drag Detected: ${duration.toFixed(2)}ms`);
+          Diagnostics.warn('Aquarium', `Heavy Drag Detected: ${duration.toFixed(2)}ms`);
       }
       renderStart.current = performance.now();
   });

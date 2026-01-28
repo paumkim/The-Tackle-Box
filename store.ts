@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { Contact, SidebarState, UserRole, NotificationSettings, MapStyle, CompassMode, CrewMember, CrewStatus, FlareType, WeatherCondition, GPSCoordinates, Achievement, WeatherData, ThemeMode, EnergyLevel, ViewState, LayoutMode } from './types';
 import { db } from './db';
 import { NotificationManager } from './utils/notifications';
+import { Diagnostics } from './utils/diagnostics';
 
 interface VoyageStats {
   duration: number;
@@ -88,6 +89,8 @@ interface AppState {
   // Settings (Toggles)
   quietMode: boolean;
   toggleQuietMode: () => void;
+  developerMode: boolean;
+  setDeveloperMode: (enabled: boolean) => void;
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
   highContrastMode: boolean;
@@ -157,6 +160,8 @@ interface AppState {
   // Global Speed State
   currentSpeed: number;
   setCurrentSpeed: (speed: number) => void;
+  currentFPS: number;
+  setCurrentFPS: (fps: number) => void;
 
   // Captain's Role
   userRole: UserRole | null;
@@ -276,6 +281,7 @@ const savedTheme = localStorage.getItem('vessel_theme') as ThemeMode | null;
 const savedHighContrast = localStorage.getItem('vessel_high_contrast');
 const savedLocalSearch = localStorage.getItem('vessel_local_search');
 const savedWakeLock = localStorage.getItem('vessel_wake_lock');
+const savedDevMode = localStorage.getItem('vessel_developer_mode');
 
 // P.A.T.C.O. Persistence
 const savedPatcoAudio = localStorage.getItem('vessel_patco_audio');
@@ -409,6 +415,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   quietMode: false,
   toggleQuietMode: () => set((state) => ({ quietMode: !state.quietMode })),
   
+  developerMode: savedDevMode === 'true',
+  setDeveloperMode: (val) => {
+      localStorage.setItem('vessel_developer_mode', String(val));
+      Diagnostics.setDevMode(val); // Sync logic gate
+      set({ developerMode: val });
+  },
+
   themeMode: savedTheme || 'PAPER',
   setThemeMode: (mode) => {
       localStorage.setItem('vessel_theme', mode);
@@ -509,6 +522,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   currentSpeed: 12.4,
   setCurrentSpeed: (speed) => set({ currentSpeed: speed }),
+  currentFPS: 60,
+  setCurrentFPS: (fps) => set({ currentFPS: fps }),
 
   userRole: savedRole || defaultRole,
   setUserRole: (role) => {
@@ -800,7 +815,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   morningBrief: initialBrief,
-  setMorningBrief: (text) => {
+  setMorningBrief: (text: string) => {
       localStorage.setItem('vessel_morning_brief', text);
       localStorage.setItem('vessel_brief_date', new Date().toLocaleDateString());
       set({ morningBrief: text });

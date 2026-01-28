@@ -35,6 +35,7 @@ import { HookDeck } from './components/HookDeck';
 import { GlobalContextMenu } from './components/GlobalContextMenu';
 import { TheDepths } from './components/TheDepths'; 
 import { ShipManifest } from './components/ShipManifest';
+import { LogViewer } from './components/LogViewer';
 import { ViewState, CrewStatus, FlareType, WeatherCondition } from './types';
 import { Search, SplitSquareHorizontal, Minimize2, X, Compass, Users, MapPin, CloudRain, AlertTriangle, Siren, Grid, Clock, Radio, Activity, Waves } from 'lucide-react';
 import { useAppStore } from './store';
@@ -240,6 +241,7 @@ export const App = () => {
   const bilgePumpEnabled = useAppStore(state => state.bilgePumpEnabled);
   const layoutMode = useAppStore(state => state.layoutMode);
   const wakeLockEnabled = useAppStore(state => state.wakeLockEnabled);
+  const developerMode = useAppStore(state => state.developerMode);
   
   const navigationRequest = useAppStore(state => state.navigationRequest);
   const resolveNavigation = useAppStore(state => state.resolveNavigation);
@@ -255,6 +257,7 @@ export const App = () => {
   const sosActive = useAppStore(state => state.sosActive);
   const setSosActive = useAppStore(state => state.setSosActive);
   const setCurrentSpeed = useAppStore(state => state.setCurrentSpeed);
+  const setCurrentFPS = useAppStore(state => state.setCurrentFPS);
   const setDragDetected = useAppStore(state => state.setDragDetected);
 
   const topTask = useLiveQuery(() => db.tasks.where('isCompleted').equals(0).first());
@@ -266,14 +269,14 @@ export const App = () => {
     checkSunset();
   }, [checkSunset]);
 
-  // --- DIAGNOSTIC ENGINE START ---
+  // --- DIAGNOSTIC ENGINE & GLOBAL ERROR CATCHER ---
   useEffect(() => {
     Diagnostics.startHeartbeat((fps) => {
-      // Logic: 60fps = 18.5kts (Optimal)
-      // < 45fps = Drag detected (Yellow/Red)
-      const baseSpeed = (fps / 60) * 18.5;
+      // Feed the real FPS to the bridge
+      setCurrentFPS(fps);
       
-      // Add mechanical noise to the gauge for realism
+      // Calculate speed based on FPS (60fps = 18.5kts)
+      const baseSpeed = (fps / 60) * 18.5;
       const noise = (Math.random() - 0.5) * 0.2;
       const knots = Math.max(0, Math.min(25, baseSpeed + noise));
       
@@ -281,16 +284,42 @@ export const App = () => {
       
       if (fps < 45) {
         setDragDetected(true);
-        if (Math.random() > 0.95) { // Throttle logs
-            Diagnostics.log('WARN', 'Engine', `Performance Drag: ${fps} FPS`);
-        }
       } else {
         setDragDetected(false);
       }
     });
     
-    Diagnostics.log('INFO', 'Bridge', 'Vessel systems initialized. Diagnostic engine running.');
-  }, [setCurrentSpeed, setDragDetected]);
+    Diagnostics.info('Bridge', 'Vessel systems initialized. Black Box recording.');
+
+    const handleError = (event: ErrorEvent) => {
+        Diagnostics.error('System', event.message, { stack: event.error?.stack });
+    };
+    const handleRejection = (event: PromiseRejectionEvent) => {
+        Diagnostics.error('Promise', event.reason?.message || 'Unhandled Rejection', event.reason);
+    };
+
+    // Hotkey Listener for Dev Overlay (Stealth Mode)
+    const handleKeyDown = (e: KeyboardEvent) => {
+        // Ctrl + Shift + D
+        if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+            e.preventDefault();
+            // Only toggle if developer mode is active
+            if (useAppStore.getState().developerMode) {
+                setIsDevOverlayActive(prev => !prev);
+            }
+        }
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleRejection);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+        window.removeEventListener('error', handleError);
+        window.removeEventListener('unhandledrejection', handleRejection);
+        window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [setCurrentSpeed, setCurrentFPS, setDragDetected]);
   // --- DIAGNOSTIC ENGINE END ---
 
   const handleNavigate = (view: ViewState) => {
@@ -362,7 +391,7 @@ export const App = () => {
                       });
                   },
                   (err) => {
-                      console.warn("Sextant Error:", err);
+                      Diagnostics.warn('Nav', 'Sextant Error', err);
                   }
               );
           }
@@ -414,7 +443,6 @@ export const App = () => {
       case ViewState.AQUARIUM: return <Aquarium />;
       case ViewState.REEF: return <TheReef />;
       case ViewState.DEV_JOURNAL: return <DevJournal />;
-      case ViewState.SETTINGS: return <Settings />;
       case ViewState.DRIFT_REPORT: return <DriftReport />;
       case ViewState.SHIP_MANIFEST: return <ShipManifest />;
       default: return <Dashboard />;
@@ -425,6 +453,8 @@ export const App = () => {
     <div className={`deep-water-transition h-screen w-screen overflow-hidden flex justify-center relative ${themeMode === 'MIDNIGHT' ? 'bg-slate-900 text-slate-200' : 'bg-[#f4f1ea] text-slate-800'} ${isNightWatch && themeMode === 'PAPER' ? 'sepia-[.2]' : ''} ${highContrastMode ? 'contrast-125 font-semibold' : ''}`}>
       
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-60 mix-blend-multiply pointer-events-none z-0"></div>
+
+      {developerMode && isDevOverlayActive && <LogViewer onClose={() => setIsDevOverlayActive(false)} />}
 
       <CaptainInteractionLayer />
       <GlobalContextMenu />
@@ -444,6 +474,7 @@ export const App = () => {
       <ScriptLure />
       
       <TheDepths isOpen={isDepthsOpen} onClose={() => setDepthsOpen(false)} />
+      <Settings />
 
       <div className={`flex w-full h-full shadow-2xl relative bridge-hull bg-transparent z-10 ${layoutMode === 'FULL_HULL' ? 'max-w-[1440px] mx-auto border-x border-stone-300' : 'w-full'}`}>
           

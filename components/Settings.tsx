@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ChevronRight, 
   Settings as SettingsIcon, 
@@ -58,20 +58,27 @@ import {
   Droplets,
   X,
   FileText,
-  ClipboardCheck
+  ClipboardCheck,
+  Terminal
 } from 'lucide-react';
 import { db } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useAppStore } from '../store';
 import { NotificationManager } from '../utils/notifications';
 import { UserRole, MapStyle, CompassMode, Contact, ViewState } from '../types';
-import { AnimatePresence, motion } from 'framer-motion';
 import { Diagnostics } from '../utils/diagnostics';
 
 export const Settings: React.FC = () => {
   const isSettingsOpen = useAppStore(state => state.isSettingsOpen);
   const setSettingsOpen = useAppStore(state => state.setSettingsOpen);
   const sidebarState = useAppStore(state => state.sidebarState);
+
+  // Diagnostic Logger for Visibility
+  useEffect(() => {
+      if (isSettingsOpen) {
+          Diagnostics.info("Settings", "Settings Deck: OPEN");
+      }
+  }, [isSettingsOpen]);
 
   const getLeftOffset = () => {
       switch(sidebarState) {
@@ -83,37 +90,29 @@ export const Settings: React.FC = () => {
   };
 
   const handleClose = () => {
+      Diagnostics.info("Settings", "Settings Deck: CLOSED");
       setSettingsOpen(false);
   };
 
+  if (!isSettingsOpen) return null;
+
   return (
-    <AnimatePresence>
-      {isSettingsOpen && (
-        <>
-          <motion.div 
-              className="fixed inset-0 bg-transparent z-[998]"
-              onClick={handleClose}
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
-          />
-          
-          <motion.div 
-              style={{ 
-                  left: getLeftOffset(),
-                  boxShadow: '5px 0 15px rgba(0, 0, 0, 0.1)' 
-              }}
-              className="fixed top-0 bottom-0 w-[320px] z-[999] bg-[#fdfbf7] border-r border-y border-slate-200/50 rounded-r-2xl overflow-hidden flex flex-col pointer-events-auto"
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ duration: 0 }}
-          >
-              <SettingsContent onClose={handleClose} />
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+    <>
+      <div 
+          className="fixed inset-0 bg-transparent z-[1199]"
+          onClick={handleClose}
+      />
+      
+      <div 
+          style={{ 
+              left: getLeftOffset(),
+              boxShadow: '5px 0 15px rgba(0, 0, 0, 0.1)' 
+          }}
+          className="fixed top-0 bottom-0 w-[320px] z-[1200] bg-[#fdfbf7] border-r border-y border-slate-200/50 rounded-r-2xl overflow-hidden flex flex-col pointer-events-auto"
+      >
+          <SettingsContent onClose={handleClose} />
+      </div>
+    </>
   );
 };
 
@@ -160,6 +159,8 @@ const SettingsContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const setLayoutMode = useAppStore(state => state.setLayoutMode);
   const wakeLockEnabled = useAppStore(state => state.wakeLockEnabled);
   const setWakeLockEnabled = useAppStore(state => state.setWakeLockEnabled);
+  const developerMode = useAppStore(state => state.developerMode);
+  const setDeveloperMode = useAppStore(state => state.setDeveloperMode);
 
   const patcoAudioEnabled = useAppStore(state => state.patcoAudioEnabled);
   const setPatcoAudioEnabled = useAppStore(state => state.setPatcoAudioEnabled);
@@ -236,8 +237,20 @@ const SettingsContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 onToggle={setWakeLockEnabled}
             />
 
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2 mt-4">Diagnostics</h3>
-            <SettingItem icon={ClipboardCheck} label="Export Ship's Vitals" onClick={exportVitals} />
+            <ToggleSettingItem 
+                icon={Terminal}
+                label="Developer Mode"
+                active={developerMode}
+                onToggle={setDeveloperMode}
+                description="Enables diagnostic HUD (Ctrl+Shift+D)"
+            />
+
+            {developerMode && (
+                <>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2 mt-4">Diagnostics</h3>
+                    <SettingItem icon={ClipboardCheck} label="Export Ship's Vitals" onClick={exportVitals} />
+                </>
+            )}
            </div>
         </div>
       );
