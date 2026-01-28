@@ -4,14 +4,12 @@ import { useAppStore } from '../store';
 import { db } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Send, User, ChevronRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 export const HookDeck: React.FC = () => {
   const isChatOpen = useAppStore(state => state.isChatOpen);
   const hookedContactId = useAppStore(state => state.hookedContactId);
   const sidebarState = useAppStore(state => state.sidebarState);
 
-  // Anchoring Calculation: Strictly flush to rail
   const getLeftOffset = () => {
       switch(sidebarState) {
           case 'full': return '260px'; 
@@ -21,26 +19,21 @@ export const HookDeck: React.FC = () => {
       }
   };
 
+  if (!isChatOpen || !hookedContactId) return null;
+
   return (
-    <AnimatePresence>
-      {isChatOpen && hookedContactId && (
-        <motion.div 
-            style={{ left: getLeftOffset() }}
-            className="fixed top-0 bottom-0 w-[240px] z-[997] bg-[#fdfbf7]/95 backdrop-blur-sm shadow-xl border-r border-y border-slate-200/50 rounded-r-xl overflow-hidden flex flex-col pointer-events-auto"
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '-100%' }}
-            transition={{ type: "tween", ease: [0.4, 0, 0.2, 1], duration: 0.3 }}
-        >
-            <HookDeckContent contactId={hookedContactId} />
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <div 
+        style={{ 
+            left: getLeftOffset(),
+            boxShadow: '5px 0 15px rgba(0, 0, 0, 0.1)' 
+        }}
+        className="fixed top-0 bottom-0 w-[240px] z-[997] bg-[#fdfbf7] border-r border-y border-slate-200/50 rounded-r-xl overflow-hidden flex flex-col pointer-events-auto"
+    >
+        <HookDeckContent contactId={hookedContactId} />
+    </div>
   );
 };
 
-// --- ISOLATED CONTENT COMPONENT ---
-// Keeps all query logic alive ONLY when chat is open
 const HookDeckContent: React.FC<{ contactId: number }> = ({ contactId }) => {
   const setCrewTyping = useAppStore(state => state.setCrewTyping);
   
@@ -56,15 +49,11 @@ const HookDeckContent: React.FC<{ contactId: number }> = ({ contactId }) => {
       }
   }, [chatHistory]);
 
-  // Simulate Crew Response
   useEffect(() => {
       let typingTimeout: number;
       if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].sender === 'me') {
-          // Simulate typing start
           typingTimeout = window.setTimeout(() => {
               setCrewTyping(true);
-              
-              // Simulate typing end & message
               setTimeout(() => {
                   setCrewTyping(false);
                   setChatHistory(prev => [...prev, {
@@ -94,8 +83,7 @@ const HookDeckContent: React.FC<{ contactId: number }> = ({ contactId }) => {
 
   return (
     <>
-        {/* Header */}
-        <div className="p-4 border-b border-slate-200/50 bg-white/40 shrink-0">
+        <div className="p-4 border-b border-slate-200/50 bg-white shrink-0">
             <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Secure Channel</span>
@@ -107,7 +95,6 @@ const HookDeckContent: React.FC<{ contactId: number }> = ({ contactId }) => {
             )}
         </div>
 
-        {/* Chat Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar" ref={scrollRef}>
             {chatHistory.length === 0 && (
                 <div className="text-center text-slate-400 text-xs italic mt-10">
@@ -134,7 +121,6 @@ const HookDeckContent: React.FC<{ contactId: number }> = ({ contactId }) => {
             ))}
         </div>
 
-        {/* Input Footer */}
         <div className="p-3 bg-white border-t border-slate-200 shrink-0">
             <form onSubmit={handleSend} className="relative">
                 <input 
@@ -142,12 +128,12 @@ const HookDeckContent: React.FC<{ contactId: number }> = ({ contactId }) => {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Message crew..." 
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-3 pr-8 text-xs focus:outline-none focus:border-slate-400 focus:bg-white transition-colors font-serif"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-3 pr-8 text-xs focus:outline-none focus:border-slate-400 focus:bg-white font-serif"
                 />
                 <button 
                     type="submit"
                     disabled={!message.trim()}
-                    className="absolute right-1 top-1 p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="absolute right-1 top-1 p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                     <ChevronRight className="w-4 h-4" />
                 </button>

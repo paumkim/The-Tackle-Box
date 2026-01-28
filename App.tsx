@@ -33,7 +33,8 @@ import { CaptainInteractionLayer } from './components/CaptainInteractionLayer';
 import { DeployNetButton } from './components/DeployNetButton';
 import { HookDeck } from './components/HookDeck';
 import { GlobalContextMenu } from './components/GlobalContextMenu';
-import { TheDepths } from './components/TheDepths'; // Imported Global Modal
+import { TheDepths } from './components/TheDepths'; 
+import { ShipManifest } from './components/ShipManifest';
 import { ViewState, CrewStatus, FlareType, WeatherCondition } from './types';
 import { Search, SplitSquareHorizontal, Minimize2, X, Compass, Users, MapPin, CloudRain, AlertTriangle, Siren, Grid, Clock, Radio, Activity, Waves } from 'lucide-react';
 import { useAppStore } from './store';
@@ -43,23 +44,22 @@ import { NotificationManager } from './utils/notifications';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const WeatherLayer: React.FC<{ condition: WeatherCondition }> = React.memo(({ condition }) => {
-  // Optimization: Return null immediately for CLEAR weather (handled by base CSS) to avoid unnecessary DOM depth
   if (condition === 'CLEAR') return null;
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden will-change-transform">
         {/* THE MIST (Fog) - Updated for Transparent Hull Protocol: removed blur */}
         {(condition === 'FOG' || condition === 'RAIN') && (
-            <div className="absolute inset-0 bg-white/20">
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-100/30 via-transparent to-slate-100/30 animate-current opacity-40 will-change-transform"></div>
-                {condition === 'RAIN' && <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagonal-stripes.png')] opacity-10 mix-blend-multiply will-change-transform"></div>}
+            <div className="absolute inset-0 bg-white/10">
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-100/20 via-transparent to-slate-100/20 animate-current opacity-30 will-change-transform"></div>
+                {condition === 'RAIN' && <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagonal-stripes.png')] opacity-5 mix-blend-multiply will-change-transform"></div>}
             </div>
         )}
 
         {/* STORM SURGE */}
         {condition === 'STORM' && (
-            <div className="absolute inset-0 bg-slate-900/40 mix-blend-overlay">
-                <div className="absolute inset-0 bg-black/10 animate-pulse"></div>
+            <div className="absolute inset-0 bg-slate-900/20 mix-blend-overlay">
+                <div className="absolute inset-0 bg-black/5 animate-pulse"></div>
                 {/* Lightning Flashes */}
                 <div className="absolute inset-0 bg-white opacity-0 animate-[ping_5s_infinite]"></div>
             </div>
@@ -70,18 +70,12 @@ const WeatherLayer: React.FC<{ condition: WeatherCondition }> = React.memo(({ co
 
 // The Current: Predictive Workload Meter
 const TheCurrent = () => {
-    // Logic: Inflow Velocity vs Outflow Capacity
     const inboxCount = useLiveQuery(() => db.tasks.filter(t => t.projectId === undefined).count()) || 0;
     const completedToday = useLiveQuery(() => db.tasks.where('isCompleted').equals(1).count()) || 0; 
     const setShoreLeave = useAppStore(state => state.setShoreLeave);
 
-    // Velocity = Incoming Pressure / (Capacity + Buffer)
-    // 0.5 = Calm, 1.0 = Optimal, > 1.5 = Surge
     const velocity = Math.min(2, Math.max(0, (inboxCount / (Math.max(1, completedToday) + 5)))); 
-    
-    // Rotation: -45deg (Calm) to 45deg (Surge)
     const rotation = (velocity * 90) - 45; 
-    
     const isRough = velocity > 1.2;
 
     return (
@@ -92,7 +86,6 @@ const TheCurrent = () => {
         >
             <div className="relative w-5 h-2.5 overflow-hidden flex items-end justify-center shrink-0">
                 <div className="absolute bottom-0 w-4 h-4 rounded-full border-2 border-stone-400 border-b-transparent border-r-transparent transform rotate-45"></div>
-                {/* Needle */}
                 <motion.div 
                     className={`absolute bottom-0 w-0.5 h-2 origin-bottom rounded-full ${isRough ? 'bg-amber-600' : 'bg-slate-800'}`}
                     animate={{ rotate: rotation }}
@@ -113,7 +106,6 @@ const TheCurrent = () => {
 const SOSModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const [ticker, setTicker] = useState("Broadcasting distress signal to Fleet Command...");
   
-  // Hold Logic
   const [isHolding, setIsHolding] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const holdIntervalRef = useRef<number | null>(null);
@@ -165,22 +157,19 @@ const SOSModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-red-900/40"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-red-900/20"
     >
-       {/* Background Pulse */}
        <motion.div 
-         animate={{ opacity: [0.1, 0.3, 0.1] }}
+         animate={{ opacity: [0.1, 0.2, 0.1] }}
          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-         className="absolute inset-0 bg-red-600/10 pointer-events-none"
+         className="absolute inset-0 bg-red-600/5 pointer-events-none"
        />
 
        <div className="bg-[#fdfbf7] p-8 rounded-xl shadow-2xl border-4 border-red-500 max-w-md w-full text-center relative overflow-hidden">
-          {/* Paper Texture */}
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-50 mix-blend-multiply pointer-events-none"></div>
           
           <div className="relative z-10">
               <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-red-200 relative">
-                 {/* Progress Ring */}
                  {isHolding && (
                      <svg className="absolute inset-0 w-20 h-20 transform -rotate-90">
                          <circle cx="40" cy="40" r="38" stroke="transparent" strokeWidth="4" fill="none" />
@@ -201,10 +190,7 @@ const SOSModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, 
               </div>
               
               <h2 className="text-2xl font-black text-red-700 mb-2 uppercase tracking-widest font-serif">Emergency Beacon Active</h2>
-              
-              <p className="text-sm font-mono text-red-900/70 mb-8 h-6">
-                 {ticker}
-              </p>
+              <p className="text-sm font-mono text-red-900/70 mb-8 h-6">{ticker}</p>
               
               <button 
                  onMouseDown={startHold}
@@ -223,19 +209,15 @@ const SOSModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, 
 };
 
 export const App = () => {
-  // Navigation State with Persistence
   const [currentView, setCurrentView] = useState<ViewState>(() => {
     const saved = localStorage.getItem('tackle_current_view');
     return (saved as ViewState) || ViewState.DASHBOARD;
   });
   
   const [history, setHistory] = useState<ViewState[]>([currentView]);
-  
-  // Split View State "The Outrigger"
   const [isSplitView, setIsSplitView] = useState(false);
   const [secondaryView, setSecondaryView] = useState<ViewState>(ViewState.NOTES);
 
-  // Layout State
   const [isLiveWellOpen, setIsLiveWellOpen] = useState(false);
   const isSonarOpen = useAppStore(state => state.isSonarOpen);
   const setSonarOpen = useAppStore(state => state.setSonarOpen);
@@ -243,72 +225,44 @@ export const App = () => {
   const [isDevOverlayActive, setIsDevOverlayActive] = useState(false);
   const isDepthsOpen = useAppStore(state => state.isDepthsOpen);
   const setDepthsOpen = useAppStore(state => state.setDepthsOpen);
-  
-  // Heading State (Dynamic)
   const [heading, setHeading] = useState(340);
 
-  // Store Hooks
-  const toggleSidebar = useAppStore(state => state.toggleSidebar);
   const sidebarState = useAppStore(state => state.sidebarState);
-  const quietMode = useAppStore(state => state.quietMode);
   const isSubmerged = useAppStore(state => state.isSubmerged);
   const cabinMode = useAppStore(state => state.cabinMode);
   const isOvertime = useAppStore(state => state.isOvertime);
-  const notificationSettings = useAppStore(state => state.notificationSettings);
   const isNightWatch = useAppStore(state => state.isNightWatch);
   const checkSunset = useAppStore(state => state.checkSunset);
-  const setDragDetected = useAppStore(state => state.setDragDetected);
   const themeMode = useAppStore(state => state.themeMode);
   const highContrastMode = useAppStore(state => state.highContrastMode);
   const shiftDuration = useAppStore(state => state.shiftDuration);
   const bilgePumpEnabled = useAppStore(state => state.bilgePumpEnabled);
   const layoutMode = useAppStore(state => state.layoutMode);
-  const isSettingsOpen = useAppStore(state => state.isSettingsOpen);
   const wakeLockEnabled = useAppStore(state => state.wakeLockEnabled);
   
-  // Navigation Request
   const navigationRequest = useAppStore(state => state.navigationRequest);
   const resolveNavigation = useAppStore(state => state.resolveNavigation);
 
-  // Crew State
   const crewManifest = useAppStore(state => state.crewManifest);
-  const updateCrewStatus = useAppStore(state => state.updateCrewStatus);
-  const fireFlare = useAppStore(state => state.fireFlare);
-
-  // Location & Weather
   const locationEnabled = useAppStore(state => state.locationEnabled);
   const currentLocation = useAppStore(state => state.currentLocation);
   const setCurrentLocation = useAppStore(state => state.setCurrentLocation);
   const fetchWeather = useAppStore(state => state.fetchWeather);
   const weatherCondition = useAppStore(state => state.weatherCondition);
   const setWeatherCondition = useAppStore(state => state.setWeatherCondition);
-  const [showLocationRequest, setShowLocationRequest] = useState(false);
 
-  // SOS
   const sosActive = useAppStore(state => state.sosActive);
   const setSosActive = useAppStore(state => state.setSosActive);
 
-  // Top Task for Heading Compass
   const topTask = useLiveQuery(() => db.tasks.where('isCompleted').equals(0).first());
-  
-  // Pending Signals Count (Sonar Focus Lens)
   const pendingSignalCount = useLiveQuery(() => db.contacts.where('signalResponse').equals('PENDING').count()) || 0;
-  
-  // Live Well Counter
-  const liveWellItemCount = useLiveQuery(() => db.assets.where('location').equals('live_well').count()) || 0;
-
-  // Logic: Inflow for Fog
   const inboxCount = useLiveQuery(() => db.tasks.filter(t => t.projectId === undefined).count()) || 0;
-
-  // Active Session for ETA
   const activeSession = useLiveQuery(() => db.sessions.where('endTime').equals(0).first());
 
   useEffect(() => {
-    // Initial Sunset Check
     checkSunset();
   }, [checkSunset]);
 
-  // Handle Navigation Function
   const handleNavigate = (view: ViewState) => {
       if (view === currentView) return;
       setCurrentView(view);
@@ -316,7 +270,6 @@ export const App = () => {
       localStorage.setItem('tackle_current_view', view);
   };
 
-  // Handle Navigation Requests (e.g. from TimeLog for Morning Review)
   useEffect(() => {
       if (navigationRequest) {
           handleNavigate(navigationRequest);
@@ -324,33 +277,20 @@ export const App = () => {
       }
   }, [navigationRequest, resolveNavigation]);
 
-  // Atmospheric Controller (Live Weather Logic)
   useEffect(() => {
-      // 1. SOS -> STORM
       if (sosActive) {
           setWeatherCondition('STORM');
           return;
       }
-      // 2. High Inbox -> FOG (The Mist)
-      if (inboxCount > 5) {
+      if (inboxCount > 5 || pendingSignalCount > 5) {
           setWeatherCondition('FOG');
           return;
       }
-      // 3. Pending Signals -> FOG
-      if (pendingSignalCount > 5) {
-          setWeatherCondition('FOG');
-          return;
-      }
-      
-      // Default -> CLEAR (Ripple)
       setWeatherCondition('CLEAR');
-
   }, [sosActive, inboxCount, pendingSignalCount, setWeatherCondition]);
 
-  // Wake Lock Hook (Navigator's Watch)
   useEffect(() => {
     let wakeLock: any = null;
-
     const requestWakeLock = async () => {
       try {
         if ('wakeLock' in navigator) {
@@ -358,23 +298,19 @@ export const App = () => {
         }
       } catch (err) {}
     };
-
     const releaseWakeLock = async () => {
       if (wakeLock) {
         await wakeLock.release();
         wakeLock = null;
       }
     };
-
     if (wakeLockEnabled) {
       requestWakeLock();
-      
       const handleVisibilityChange = () => {
         if (wakeLock !== null && document.visibilityState === 'visible') {
           requestWakeLock();
         }
       };
-      
       document.addEventListener('visibilitychange', handleVisibilityChange);
       return () => {
         releaseWakeLock();
@@ -385,45 +321,6 @@ export const App = () => {
     }
   }, [wakeLockEnabled]);
 
-  // Global Drag Watch
-  useEffect(() => {
-    let dragCounter = 0;
-    
-    const handleDragEnter = (e: DragEvent) => {
-      e.preventDefault();
-      dragCounter++;
-      if (dragCounter === 1) {
-        setDragDetected(true);
-      }
-    };
-    
-    const handleDragLeave = (e: DragEvent) => {
-      e.preventDefault();
-      dragCounter--;
-      if (dragCounter <= 0) {
-        dragCounter = 0;
-        setDragDetected(false);
-      }
-    };
-    
-    const handleDrop = (e: DragEvent) => {
-      e.preventDefault();
-      dragCounter = 0;
-      setDragDetected(false);
-    };
-
-    window.addEventListener('dragenter', handleDragEnter);
-    window.addEventListener('dragleave', handleDragLeave);
-    window.addEventListener('drop', handleDrop);
-    
-    return () => {
-      window.removeEventListener('dragenter', handleDragEnter);
-      window.removeEventListener('dragleave', handleDragLeave);
-      window.removeEventListener('drop', handleDrop);
-    };
-  }, [setDragDetected]);
-
-  // Location / Weather Sync (Data Only)
   useEffect(() => {
       if (locationEnabled && !currentLocation) {
           if (navigator.geolocation) {
@@ -445,28 +342,24 @@ export const App = () => {
   useEffect(() => {
       if (currentLocation) {
           fetchWeather();
-          // Poll weather every 30 mins
           const interval = setInterval(fetchWeather, 30 * 60 * 1000);
           return () => clearInterval(interval);
       }
   }, [currentLocation, fetchWeather]);
 
-  // Anchor Guard (Safe-Exit Protection)
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (useAppStore.getState().isSubmerged) {
         e.preventDefault();
-        e.returnValue = ''; // Trigger browser confirmation dialog
+        e.returnValue = ''; 
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
-  // Heading Oscillation Effect
   useEffect(() => {
     const interval = setInterval(() => {
-        // Drifts between 338 and 342
         setHeading(prev => {
             const drift = (Math.random() - 0.5) * 0.4;
             return Math.max(338, Math.min(342, prev + drift));
@@ -475,20 +368,6 @@ export const App = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Simulation: Crew Activity Loop
-  useEffect(() => {
-      const interval = setInterval(() => {
-          // 5% chance every 10s for an event
-          if (Math.random() > 0.95) {
-              if (crewManifest.length > 0) {
-                  const target = crewManifest[Math.floor(Math.random() * crewManifest.length)];
-              }
-          }
-      }, 10000);
-      return () => clearInterval(interval);
-  }, [crewManifest]);
-
-  // ETA Calculation
   const getETA = () => {
       if (!activeSession) return 'DOCKED';
       const endTime = activeSession.startTime + (shiftDuration * 60 * 60 * 1000);
@@ -507,6 +386,7 @@ export const App = () => {
       case ViewState.DEV_JOURNAL: return <DevJournal />;
       case ViewState.SETTINGS: return <Settings />;
       case ViewState.DRIFT_REPORT: return <DriftReport />;
+      case ViewState.SHIP_MANIFEST: return <ShipManifest />;
       default: return <Dashboard />;
     }
   };
@@ -514,37 +394,29 @@ export const App = () => {
   return (
     <div className={`deep-water-transition h-screen w-screen overflow-hidden flex justify-center relative ${themeMode === 'MIDNIGHT' ? 'bg-slate-900 text-slate-200' : 'bg-[#f4f1ea] text-slate-800'} ${isNightWatch && themeMode === 'PAPER' ? 'sepia-[.2]' : ''} ${highContrastMode ? 'contrast-125 font-semibold' : ''}`}>
       
-      {/* Paper Texture Overlay (Global) */}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-60 mix-blend-multiply pointer-events-none z-0"></div>
 
-      {/* Layer 4: Signals & Interaction */}
       <CaptainInteractionLayer />
       <GlobalContextMenu />
       
-      {/* Layer 0: Background Atmosphere */}
       <WeatherLayer condition={weatherCondition} />
       <DeepWater isActive={isSubmerged} />
       {bilgePumpEnabled && <BilgeWater />}
 
-      {/* Layer 3: System Monitors & Modals */}
       <PatcoMonitor />
       <AudioBridge />
       <SafeHarbor />
       <ShoreLeave />
-      <Settings />
       <HookDeck />
       <SOSModal isOpen={sosActive} onClose={() => setSosActive(false)} />
       {showDailyCatch && <DailyCatch onComplete={() => setShowDailyCatch(false)} />}
       <TheBuoy />
       <ScriptLure />
       
-      {/* The Depths Portal - Now Elevated Above Deck */}
       <TheDepths isOpen={isDepthsOpen} onClose={() => setDepthsOpen(false)} />
 
-      {/* THE GAPLESS HULL: Snap-to-Rail Architecture */}
       <div className={`flex w-full h-full shadow-2xl relative bridge-hull bg-transparent z-10 ${layoutMode === 'FULL_HULL' ? 'max-w-[1440px] mx-auto border-x border-stone-300' : 'w-full'}`}>
           
-          {/* PORT-RAIL (Sidebar) - Layer 2 */}
           <Sidebar 
             currentView={currentView} 
             onChangeView={handleNavigate} 
@@ -552,21 +424,13 @@ export const App = () => {
             onToggleDevOverlay={() => setIsDevOverlayActive(!isDevOverlayActive)}
           />
 
-          {/* THE BRIDGE-DECK (Main Content) - Layer 1 */}
           <main className={`flex-1 flex flex-col min-w-0 relative z-10 transition-colors border-r border-stone-300 ${themeMode === 'MIDNIGHT' ? 'bg-slate-900/95 border-slate-700' : 'bg-[#fdfbf7]/95'} ${cabinMode && isSubmerged ? 'brightness-90 contrast-110' : ''}`}>
-              
-              {/* Paper Texture Overlay */}
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-50 mix-blend-multiply pointer-events-none z-0"></div>
 
-              {/* Horizon View (Voyage Bar) */}
               <VoyageBar />
-
-              {/* Fishing Line (Focus Tool) */}
               <FishingLine />
 
-              {/* Top Bar (The Bridge) */}
               <header className={`h-16 flex items-center justify-between px-6 border-b z-50 shrink-0 transition-colors ${themeMode === 'MIDNIGHT' ? 'bg-slate-900/80 border-slate-700' : 'bg-[#fdfbf7]/80 border-stone-300'} relative z-20`}>
-                  {/* Left: Ghost Catch */}
                   <div className="flex items-center gap-4">
                   {isSubmerged ? (
                       <div className="flex items-center gap-3 animate-pulse">
@@ -579,7 +443,6 @@ export const App = () => {
                           {currentView.charAt(0) + currentView.slice(1).toLowerCase().replace('_', ' ')}
                       </h1>
                       
-                      {/* Heading Compass */}
                       <div className={`hidden lg:flex items-center gap-2 text-[10px] font-mono px-2 py-1 rounded border ml-4 animate-in fade-in slide-in-from-left-2 shadow-sm ${themeMode === 'MIDNIGHT' ? 'bg-slate-800 border-slate-600 text-slate-300' : 'bg-[#fdfbf7] border-stone-300 text-slate-500'}`}>
                           <Compass className="w-3 h-3 text-blue-700" />
                           <span className="font-bold tabular-nums">HDG {heading.toFixed(0)}°</span>
@@ -590,16 +453,12 @@ export const App = () => {
                   )}
                   </div>
 
-                  {/* Right Controls - "Sonar Pills" */}
                   <div className="flex items-center gap-3">
-                  
-                  {/* ETA Indicator */}
                   <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-sm ${themeMode === 'MIDNIGHT' ? 'bg-slate-800 border-slate-600 text-slate-300' : 'bg-[#fdfbf7] border-stone-300 text-stone-600 hover:border-stone-400'}`} title="Estimated Arrival">
                       <Clock className="w-3.5 h-3.5 opacity-60" />
                       <span className={`text-xs font-mono font-bold ${activeSession ? 'text-[#3B4B5F]' : 'text-slate-500'}`}>{getETA()}</span>
                   </div>
 
-                  {/* The Current (Predictive Workload Meter) */}
                   <TheCurrent />
 
                   <div className="w-px h-4 bg-stone-300 mx-1"></div>
@@ -617,7 +476,6 @@ export const App = () => {
                       </>
                   )}
 
-                  {/* Deploy Net (Quick-Intake Hub) */}
                   <DeployNetButton 
                       onOpenFullNet={() => setIsLiveWellOpen(true)}
                       themeMode={themeMode}
@@ -637,16 +495,13 @@ export const App = () => {
                   </div>
               </header>
 
-              {/* Workspace Content */}
               <div className="flex-1 overflow-hidden flex relative z-10">
-                  {/* Primary View */}
-                  <div className={`flex-1 overflow-y-auto p-6 md:p-8 h-full min-w-[300px] border-r ${themeMode === 'MIDNIGHT' ? 'border-slate-700' : 'border-stone-300'}`}>
+                  <div className={`flex-1 overflow-hidden h-full min-w-[300px] border-r ${themeMode === 'MIDNIGHT' ? 'border-slate-700' : 'border-stone-300'}`}>
                       {renderViewContent(currentView)}
                   </div>
 
-                  {/* The Outrigger (Secondary View) */}
                   {isSplitView && !isSubmerged && (
-                      <div className={`flex-1 overflow-y-auto p-6 md:p-8 h-full min-w-[300px] relative border-l ${themeMode === 'MIDNIGHT' ? 'bg-slate-900 border-slate-700' : 'bg-[#fdfbf7] border-stone-300'}`}>
+                      <div className={`flex-1 overflow-hidden h-full min-w-[300px] relative border-l ${themeMode === 'MIDNIGHT' ? 'bg-slate-900 border-slate-700' : 'bg-[#fdfbf7] border-stone-300'}`}>
                       <div className="absolute top-4 right-4 z-10 flex gap-2">
                           <select 
                           value={secondaryView} 
@@ -667,22 +522,18 @@ export const App = () => {
               </div>
           </main>
 
-          {/* STARBOARD-RAIL (Right Control Rail) - Layer 2 */}
           <RightControlRail />
       
       </div>
 
-      {/* Layer 3: Overlays */}
       <LiveWell isOpen={isLiveWellOpen} onClose={() => setIsLiveWellOpen(false)} />
       <Sonar isOpen={isSonarOpen} onClose={() => setSonarOpen(false)} onNavigate={handleNavigate} />
       <TheNet />
 
-      {/* Cabin Mode Vignette */}
       {cabinMode && isSubmerged && (
           <div className="fixed inset-0 pointer-events-none z-[60] shadow-[inset_0_0_200px_rgba(0,0,0,0.8)] transition-all duration-1000 mix-blend-multiply"></div>
       )}
 
-      {/* Lantern Mode (Midnight Oil) - Warm Glow Overlay */}
       {isOvertime && (
           <div className="fixed inset-0 pointer-events-none z-[55] bg-orange-500/5 mix-blend-overlay shadow-[inset_0_0_100px_rgba(255,165,0,0.2)] transition-opacity duration-[2000ms]"></div>
       )}

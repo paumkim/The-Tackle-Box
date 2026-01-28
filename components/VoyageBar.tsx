@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
@@ -13,6 +12,7 @@ export const VoyageBar: React.FC = () => {
   const hqName = useAppStore(state => state.hqName);
   const isDepartureManifestOpen = useAppStore(state => state.isDepartureManifestOpen);
   const connectionStatus = useAppStore(state => state.connectionStatus);
+  const currentSpeed = useAppStore(state => state.currentSpeed);
   const [progress, setProgress] = useState(0);
 
   // If active project, query task stats
@@ -55,6 +55,15 @@ export const VoyageBar: React.FC = () => {
   // Clamping logic to keep ship inside the visible track (32px icon width approx 3-4%)
   const shipPosition = Math.max(3, Math.min(97, progress));
 
+  // --- Vessel Motion Protocol ---
+  // Heavy Seas condition based on telemetry label logic
+  const isHeavySeas = currentSpeed < 15 && currentSpeed > 0;
+  
+  // Frequency increases with knots. Duration = TotalDistance / Speed.
+  // We use a base scale to ensure visibility. 
+  // At 40kts -> ~0.7s duration. At 0kts -> 4s duration.
+  const swayDuration = currentSpeed > 0 ? Math.max(0.4, 40 / (currentSpeed + 10)) : 4;
+
   return (
     <div className={`w-full h-12 bg-transparent relative overflow-hidden flex items-center select-none z-50 mt-2 transition-all duration-500 ${isDepartureManifestOpen ? 'pointer-events-none' : ''}`}>
       {/* Grid Lines (Longitude) - Faint */}
@@ -94,7 +103,10 @@ export const VoyageBar: React.FC = () => {
         animate={{ left: `${shipPosition}%` }}
         transition={{ type: "spring", stiffness: 50, damping: 20 }}
       >
-         <div className="relative -ml-4 -mt-4">
+         <div 
+            className={`relative -ml-4 -mt-4 transform-gpu ${isHeavySeas ? 'vessel-sway-heavy' : 'vessel-sway-idle'}`}
+            style={{ animationDuration: `${swayDuration}s` }}
+         >
              <Sailboat className="w-8 h-8 fill-current" />
              {/* Wake Effect - Slows down on final approach */}
              {activeSession && !isDocked && (

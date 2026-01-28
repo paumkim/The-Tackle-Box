@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -7,33 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="manifest" href="/manifest.json" />
     
-    <!-- SEO Meta Tags -->
     <title>The Tackle Box</title>
-    <meta name="description" content="The Tackle Box is a modular AI-powered productivity studio combining tasks, notes, timelines, and cognitive tools into a single adaptive workspace." />
-    <link rel="canonical" href="https://your-domain.com/" />
-
-    <!-- Open Graph -->
-    <meta property="og:title" content="The Tackle Box" />
-    <meta property="og:description" content="A modular AI productivity studio for thinking, planning, and building in one place." />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://your-domain.com/" />
-    <meta property="og:image" content="https://your-domain.com/og-image.png" />
-
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-
-    <!-- Structured Data -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "The Tackle Box",
-      "applicationCategory": "ProductivityApplication",
-      "operatingSystem": "Web",
-      "description": "A modular AI-powered productivity studio integrating tasks, notes, timelines, and cognitive tools.",
-      "url": "https://your-domain.com"
-    }
-    </script>
+    <meta name="description" content="Personal Operating System - Local-first AI productivity studio." />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -45,76 +19,17 @@
               serif: ['Merriweather', 'serif'],
               mono: ['JetBrains Mono', 'Menlo', 'monospace'],
             },
-            colors: {
-              tackle: {
-                50: '#f8fafc',
-                100: '#f1f5f9',
-                200: '#e2e8f0',
-                300: '#cbd5e1',
-                400: '#94a3b8',
-                500: '#64748b',
-                600: '#475569',
-                700: '#334155',
-                800: '#1e293b',
-                900: '#0f172a',
-              },
-              water: {
-                blue: '#3b82f6',
-                deep: '#1d4ed8',
-                midnight: '#020617',
-                teal: '#2dd4bf',
-                cyan: '#06b6d4',
-                neon: '#00f2ff',
-                ghost: '#1e293b'
-              }
-            },
             animation: {
               'float': 'float 6s ease-in-out infinite',
-              'swim': 'swim 20s linear infinite',
-              'pulse-glow': 'pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'bio-pulse': 'bio-pulse 3s infinite',
-              'ray-shift': 'ray-shift 20s ease-in-out infinite alternate',
-              'grain': 'grain 8s steps(10) infinite',
               'radar': 'radar 3s infinite cubic-bezier(0, 0, 0.2, 1)',
               'current': 'current 60s linear infinite',
-              'lure-pulse': 'lure-pulse 3s infinite',
-              'flow-h': 'flow-h 20s linear infinite',
               'jiggle': 'jiggle 0.2s linear infinite',
-              'hologram': 'hologram 4s infinite linear',
               'spin-slow': 'spin 12s linear infinite',
             },
             keyframes: {
               float: {
                 '0%, 100%': { transform: 'translateY(0)' },
                 '50%': { transform: 'translateY(-10px)' },
-              },
-              swim: {
-                '0%': { transform: 'translateX(-100%)' },
-                '100%': { transform: 'translateX(100vw)' },
-              },
-              'pulse-glow': {
-                '0%, 100%': { opacity: 1, boxShadow: '0 0 10px #4ade80' },
-                '50%': { opacity: .5, boxShadow: '0 0 20px #22c55e' },
-              },
-              'bio-pulse': {
-                '0%, 100%': { boxShadow: '0 0 5px rgba(59, 130, 246, 0.3)' },
-                '50%': { boxShadow: '0 0 15px rgba(59, 130, 246, 0.6)' },
-              },
-              'ray-shift': {
-                '0%': { transform: 'rotate(-5deg) translateX(-5%)' },
-                '100%': { transform: 'rotate(5deg) translateX(5%)' },
-              },
-              grain: {
-                '0%, 100%': { transform: 'translate(0, 0)' },
-                '10%': { transform: 'translate(-5%, -10%)' },
-                '20%': { transform: 'translate(-15%, 5%)' },
-                '30%': { transform: 'translate(7%, -25%)' },
-                '40%': { transform: 'translate(-5%, 25%)' },
-                '50%': { transform: 'translate(-15%, 10%)' },
-                '60%': { transform: 'translate(15%, 0%)' },
-                '70%': { transform: 'translate(0%, 15%)' },
-                '80%': { transform: 'translate(3%, 35%)' },
-                '90%': { transform: 'translate(-10%, 10%)' },
               },
               radar: {
                 '0%': { transform: 'scale(0.8)', opacity: '0.6' },
@@ -124,25 +39,12 @@
                 '0%': { backgroundPosition: '100% 0' },
                 '100%': { backgroundPosition: '0 0' },
               },
-              'lure-pulse': {
-                '0%': { boxShadow: '0 0 0 0 rgba(59, 130, 246, 0.4)' },
-                '70%': { boxShadow: '0 0 0 30px rgba(59, 130, 246, 0)' },
-                '100%': { boxShadow: '0 0 0 0 rgba(59, 130, 246, 0)' },
-              },
-              'flow-h': {
-                '0%': { transform: 'translateX(0)' },
-                '100%': { transform: 'translateX(-50%)' },
-              },
               jiggle: {
                 '0%': { transform: 'translateX(0px)' },
-                25%: { transform: 'translateX(1px)' },
-                50%: { transform: 'translateX(0px)' },
-                75%: { transform: 'translateX(-1px)' },
+                25: { transform: 'translateX(1px)' },
+                50: { transform: 'translateX(0px)' },
+                75: { transform: 'translateX(-1px)' },
                 '100%': { transform: 'translateX(0px)' },
-              },
-              hologram: {
-                '0%, 100%': { opacity: '0.8', filter: 'hue-rotate(0deg)' },
-                '50%': { opacity: '0.6', filter: 'hue-rotate(10deg)' },
               }
             }
           }
@@ -155,9 +57,9 @@
         font-family: 'Inter', sans-serif;
         user-select: none;
         -webkit-user-select: none;
+        background-color: #F8F9FA;
       }
       
-      /* Exception for inputs */
       input, textarea, [contenteditable] {
         user-select: text;
         -webkit-user-select: text;
@@ -173,182 +75,73 @@
         transition: none !important;
       }
 
-      /* Navigator Glass (Subtle 3D Frosted) - Updated for Transparent Hull Protocol */
-      .navigator-glass {
-        background: rgba(255, 255, 255, 0.65);
-        border: 1px solid rgba(255, 255, 255, 0.7);
-        box-shadow: 
-          0 4px 6px -1px rgba(0, 0, 0, 0.05), 
-          0 2px 4px -1px rgba(0, 0, 0, 0.03),
-          inset 0 1px 0 rgba(255, 255, 255, 0.9);
-        color: #1e293b; /* Slate 800 */
-      }
-
-      /* Captain's Unlock Style (Graphite Glow) */
-      .captain-unlocked {
-        user-select: text !important;
-        -webkit-user-select: text !important;
-        cursor: text;
-        position: relative;
-        background-color: rgba(255, 255, 255, 0.8);
-        box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.3), 0 0 10px rgba(100, 116, 139, 0.1);
-        border-radius: 4px;
-        transition: none !important; /* Zero Latency */
-        animation: unlock-pulse 0.5s ease-out;
-      }
-
-      @keyframes unlock-pulse {
-        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(100, 116, 139, 0.5); }
-        50% { transform: scale(1.02); box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.2); }
-        100% { transform: scale(1); box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.3); }
-      }
-      
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
-      
-      /* Noise Texture for Glassmorphism Plus */
-      .bg-noise {
-        position: relative;
-      }
-      .bg-noise::before {
-        content: "";
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
-        pointer-events: none;
-        z-index: 0;
-        animation: grain 8s steps(10) infinite;
-        opacity: 0.2;
-      }
-
-      /* Ink Grain Texture - Sea Salt Effect */
-      .ink-grain {
+      /* Universal Container Standards */
+      .bridge-container-standard {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
         position: relative;
         overflow: hidden;
-      }
-      .ink-grain::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.15'/%3E%3C/svg%3E");
-        opacity: 0.4;
-        mix-blend-mode: overlay;
-        pointer-events: none;
+        background-color: #F8F9FA;
+        width: 100%;
       }
 
-      /* Bioluminescence classes */
-      .glow-urgent {
-        animation: bio-pulse 3s infinite;
-        border-color: rgba(239, 68, 68, 0.3);
-        box-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
-      }
-      
-      .glow-text-hover:hover {
-        color: #3b82f6;
-      }
-
-      /* UPDATED GLASS PANEL - LIGHT & CLEAN - Updated for Transparent Hull Protocol */
-      .glass-panel {
-        background: rgba(255, 255, 255, 0.95);
-        border: 1px solid rgba(226, 232, 240, 1);
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-        color: #1e293b;
-      }
-      
-      .glass-panel-dark {
-        background: rgba(255, 255, 255, 0.98);
-        border: 1px solid rgba(226, 232, 240, 1);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      }
-
-      .bob-on-hover:hover {
-        transform: translateY(-2px);
-        /* Mechanical Snap Directive: Override hover transition */
-        transition: none !important;
-      }
-
-      /* The Ocean Current Effect - Subtle Light */
-      .bg-ocean-current {
-        background-color: #f8fafc;
-        background-image: repeating-linear-gradient(45deg, transparent, transparent 49px, rgba(59, 130, 246, 0.01) 50px);
-      }
-
-      /* Tactile Switch CSS */
-      .tactile-switch {
-        position: relative;
-        width: 60px;
-        height: 32px;
-        background: #e2e8f0;
-        border-radius: 4px;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-        cursor: pointer;
-        transition: none !important;
-      }
-      .tactile-switch.active {
-        background: #1e293b; /* Dark Navy for Ink Style */
-      }
-      .tactile-switch-handle {
-        position: absolute;
-        top: 2px;
-        left: 2px;
-        width: 28px;
-        height: 28px;
-        background: white;
-        border-radius: 2px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        transition: none !important;
-      }
-      .tactile-switch.active .tactile-switch-handle {
-        transform: translateX(28px);
-      }
-      .tactile-lines {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 12px;
-        height: 16px;
+      .bridge-header-standard {
+        margin-bottom: 1rem;
         display: flex;
+        align-items: flex-end;
         justify-content: space-between;
-      }
-      .tactile-lines span {
-        width: 2px;
-        height: 100%;
-        background: #cbd5e1;
-        border-radius: 1px;
-      }
-
-      /* Text Neon Glow - Removed for Flat Theme, replaced with bold */
-      .text-shadow-neon {
-        font-weight: 700;
-        letter-spacing: 0.05em;
-        color: #3b82f6;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        flex-shrink: 0;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 1rem;
+        padding-top: 1.5rem;
       }
 
-      /* Signal Lamp Animations - Neural Link */
+      .bridge-body-standard {
+        flex: 1;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        padding-bottom: 1.5rem;
+      }
+
+      /* Vessel Motion Protocol */
+      @keyframes vesselSway {
+        0% { transform: translateY(0) rotate(0); }
+        25% { transform: translateY(-3px) rotate(-3deg); }
+        50% { transform: translateY(0) rotate(0); }
+        75% { transform: translateY(2px) rotate(3deg); }
+        100% { transform: translateY(0) rotate(0); }
+      }
+
+      @keyframes vesselBob {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-2px); }
+      }
+
+      .vessel-sway-heavy {
+        animation: vesselSway infinite ease-in-out;
+        transform-origin: center bottom;
+        will-change: transform;
+      }
+
+      .vessel-sway-idle {
+        animation: vesselBob infinite ease-in-out;
+        transform-origin: center bottom;
+        will-change: transform;
+      }
+
+      /* Signal Lamp Animations */
       @keyframes pulseSignal {
         0% { background-color: #3d3011; box-shadow: inset 0 1px 2px rgba(0,0,0,0.8); }
         50% { background-color: #ffbf00; box-shadow: 0 0 5px #ffbf00, inset 0 0 2px #ffbf00; }
         100% { background-color: #3d3011; box-shadow: inset 0 1px 2px rgba(0,0,0,0.8); }
       }
       
-      /* High-speed flicker for typing */
       @keyframes flickerSignal {
         0% { opacity: 0.8; background-color: #ffd700; }
         25% { opacity: 0.4; background-color: #fff4d1; }
@@ -361,61 +154,46 @@
         width: 10px;
         height: 10px;
         border-radius: 50%;
-        border: 1px solid #786c48; /* Brass rim */
-        background-color: #3d3011; /* Dark Brass Idle */
+        border: 1px solid #786c48;
+        background-color: #3d3011;
         box-shadow: inset 0 1px 2px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.2);
-        transition: background-color 0.1s, box-shadow 0.1s;
-        transform: translateZ(0); /* Hardware acceleration */
+        will-change: background-color, box-shadow;
       }
-      .signal-lamp.syncing {
-        animation: pulseSignal 1.5s infinite ease-in-out;
-        border-color: #ffbf00;
+      .signal-lamp.syncing { animation: pulseSignal 1.5s infinite ease-in-out; border-color: #ffbf00; }
+      .signal-lamp.processing { animation: flickerSignal 0.1s infinite; border-color: #fff; box-shadow: 0 0 5px #ffd700; }
+      .signal-lamp.success { background-color: #ffd700; box-shadow: 0 0 8px #ffd700; border-color: #ffd700; animation: none; }
+      .signal-lamp.error { background-color: #8b0000; box-shadow: inset 0 0 4px #000; border-color: #500; animation: none; }
+
+      /* Navigator Glass */
+      .navigator-glass {
+        background: rgba(255, 255, 255, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        color: #1e293b;
       }
-      .signal-lamp.processing {
-        animation: flickerSignal 0.1s infinite;
-        border-color: #fff;
-        box-shadow: 0 0 5px #ffd700;
-      }
-      .signal-lamp.success {
-        background-color: #ffd700;
-        box-shadow: 0 0 8px #ffd700, inset 0 0 2px #ffd700;
-        border-color: #ffd700;
-        animation: none;
-      }
-      .signal-lamp.error {
-        background-color: #8b0000;
-        box-shadow: inset 0 0 4px #000;
-        border-color: #500;
-        animation: none;
-      }
+
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "dexie": "https://esm.sh/dexie@^4.2.1",
-    "dexie-react-hooks": "https://esm.sh/dexie-react-hooks@^4.2.0",
-    "dexie-export-import": "https://esm.sh/dexie-export-import@^4.1.4",
-    "framer-motion": "https://esm.sh/framer-motion@^11.0.8",
-    "zustand": "https://esm.sh/zustand@^4.5.2"
-  }
-}
-</script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').then(registration => {
-        console.log('SW registered: ', registration);
-      }).catch(registrationError => {
-        console.log('SW registration failed: ', registrationError);
-      });
-    });
-  }
-</script>
-</head>
+    <script type="importmap">
+    {
+      "imports": {
+        "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+        "react/": "https://esm.sh/react@^19.2.4/",
+        "react": "https://esm.sh/react@^19.2.4",
+        "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+        "dexie": "https://esm.sh/dexie@^4.2.1",
+        "dexie-react-hooks": "https://esm.sh/dexie-react-hooks@^4.2.0",
+        "dexie-export-import": "https://esm.sh/dexie-export-import@^4.1.4",
+        "framer-motion": "https://esm.sh/framer-motion@^11.0.8",
+        "zustand": "https://esm.sh/zustand@^4.5.2"
+      }
+    }
+    </script>
+  </head>
   <body class="bg-[#F8F9FA] text-slate-800 antialiased overflow-hidden h-screen w-screen">
     <div id="root" class="h-full w-full"></div>
   </body>

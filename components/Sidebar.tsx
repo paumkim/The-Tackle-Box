@@ -109,8 +109,9 @@ const KnotMeter: React.FC<{ isRailActive: boolean }> = ({ isRailActive }) => {
     const isSubmerged = useAppStore(state => state.isSubmerged);
     const isDragDetected = useAppStore(state => state.isDragDetected); // Now driven by App.tsx
     const isDrifting = useAppStore(state => state.isDrifting);
+    const setCurrentSpeed = useAppStore(state => state.setCurrentSpeed);
     
-    const [speed, setSpeed] = useState(12.4); 
+    const [speed, setLocalSpeed] = useState(12.4); 
     const targetSpeed = useRef(12.4);
     
     // Boost speed when Full Ahead
@@ -138,17 +139,22 @@ const KnotMeter: React.FC<{ isRailActive: boolean }> = ({ isRailActive }) => {
              }
 
              // Interpolate
-             setSpeed(prev => {
+             setLocalSpeed(prev => {
                 const diff = targetSpeed.current - prev;
-                if (Math.abs(diff) < 0.05) return prev;
-                return prev + diff * (isRailActive ? 0.2 : 0.5); // Snap faster when idle to avoid jank
+                if (Math.abs(diff) < 0.05) {
+                    setCurrentSpeed(prev);
+                    return prev;
+                }
+                const newVal = prev + diff * (isRailActive ? 0.2 : 0.5); // Snap faster when idle to avoid jank
+                setCurrentSpeed(newVal);
+                return newVal;
             });
         }, intervalDelay);
 
         return () => {
             clearInterval(renderLoop);
         }
-    }, [dragPenalty, baseSpeed, isRailActive]);
+    }, [dragPenalty, baseSpeed, isRailActive, setCurrentSpeed]);
 
     // Signal Translation Protocol
     let signal = 'HEAVY SEAS';
@@ -230,10 +236,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleDevOverlay
 }) => {
   const sidebarState = useAppStore(state => state.sidebarState);
-  const setSidebarState = useAppStore(state => state.setSidebarState);
   const userRole = useAppStore(state => state.userRole);
   const isDepartureManifestOpen = useAppStore(state => state.isDepartureManifestOpen);
   const setSosActive = useAppStore(state => state.setSosActive);
+  const findMember = (name: string) => useAppStore.getState().crewManifest.find(c => c.name === name);
   const sosActive = useAppStore(state => state.sosActive);
   const weatherCondition = useAppStore(state => state.weatherCondition);
   const hookedContactId = useAppStore(state => state.hookedContactId);
@@ -259,10 +265,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Queries - Only query singular hook contact if needed
   const hookedContact = useLiveQuery(() => hookedContactId ? db.contacts.get(hookedContactId) : Promise.resolve(undefined), [hookedContactId]);
 
-  // Resizing State
-  const [isResizing, setIsResizing] = useState(false);
-  const [dragWidth, setDragWidth] = useState(260);
-
   // SOS Hold Logic
   const [holdProgress, setHoldProgress] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
@@ -280,50 +282,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       
       return () => clearInterval(syncInterval);
   }, [setSignalMode]);
-
-  useEffect(() => {
-    if (!isResizing) {
-      if (sidebarState === 'full') setDragWidth(260);
-      else if (sidebarState === 'mini') setDragWidth(68);
-      else setDragWidth(0);
-    }
-  }, [sidebarState, isResizing]);
-
-  const startResizing = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    document.body.style.cursor = 'col-resize';
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    const newWidth = Math.max(0, Math.min(e.clientX, 450));
-    setDragWidth(newWidth);
-  };
-
-  const handleMouseUp = (e: MouseEvent) => {
-    setIsResizing(false);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-    document.body.style.cursor = 'default';
-
-    const finalWidth = Math.max(0, Math.min(e.clientX, 450));
-    
-    if (finalWidth < 30) {
-      setSidebarState('hidden');
-    } else if (finalWidth < 150) {
-      setSidebarState('mini');
-    } else {
-      setSidebarState('full');
-    }
-  };
-
-  const handleDoubleClickHandle = () => {
-    if (sidebarState === 'hidden') setSidebarState('mini');
-    else if (sidebarState === 'mini') setSidebarState('full');
-    else setSidebarState('mini');
-  };
 
   const getRoleLabel = (role: string | null) => {
       switch(role) {
@@ -396,10 +354,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isHidden = sidebarState === 'hidden';
   const [isHoverRevealed, setIsHoverRevealed] = useState(false);
   
-  const targetWidth = isResizing 
-    ? dragWidth 
-    : (isHidden && isHoverRevealed ? 68 : (sidebarState === 'full' ? 260 : (sidebarState === 'mini' ? 68 : 0)));
-
+  // FIXED WIDTHS (BOLTED DOWN HULL)
+  const targetWidth = isHidden && isHoverRevealed ? 68 : (sidebarState === 'full' ? 260 : (sidebarState === 'mini' ? 68 : 0));
   const renderMini = targetWidth < 180; 
 
   const isSevereWeather = weatherCondition === 'STORM';
@@ -409,9 +365,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <FeedbackBottle isOpen={isBottleOpen} onClose={() => setIsBottleOpen(false)} />
       {/* TheDepths is now rendered at App root for z-index layering */}
 
-      {isHidden && !isResizing && (
+      {isHidden && (
         <div 
-          className="absolute left-0 top-0 bottom-0 w-4 z-[60] cursor-e-resize hover:bg-blue-400/20 group/sensor"
+          className="absolute left-0 top-0 bottom-0 w-4 z-[60] cursor-pointer hover:bg-blue-400/20 group/sensor"
           onMouseEnter={() => setIsHoverRevealed(true)}
           title="Reveal Dock"
         >
@@ -423,28 +379,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         initial={false}
         animate={{ 
           width: targetWidth,
-          x: isHidden && !isHoverRevealed && !isResizing ? -20 : 0
+          x: isHidden && !isHoverRevealed ? -20 : 0
         }}
         transition={{ duration: 0 }}
         className={`
             flex-shrink-0 bg-[#fdfbf7] border-r border-stone-300 h-full flex flex-col z-[1000] relative group/sidebar 
             shadow-[4px_0_10px_rgba(0,0,0,0.1)] overflow-visible
-            ${isHidden && !isHoverRevealed && !isResizing ? 'pointer-events-none opacity-0' : 'opacity-100'}
+            ${isHidden && !isHoverRevealed ? 'pointer-events-none opacity-0' : 'opacity-100'}
             ${isDepartureManifestOpen ? 'pointer-events-none' : ''}
         `}
         onMouseLeave={() => isHidden && setIsHoverRevealed(false)}
       >
         {/* Paper Texture Overlay */}
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-60 mix-blend-multiply pointer-events-none z-0"></div>
-
-        <div 
-          onMouseDown={startResizing}
-          onDoubleClick={handleDoubleClickHandle}
-          className="absolute right-0 top-0 bottom-0 w-[4px] cursor-col-resize hover:bg-blue-400/10 z-50 flex items-center justify-center group/handle active:bg-blue-500/20"
-          title="Drag to Resize"
-        >
-          <div className={`w-[2px] rounded-full ${isResizing ? 'bg-blue-50 h-full shadow-[0_0_15px_#3b82f6]' : 'h-8 bg-stone-300 group-hover/handle:bg-blue-400 group-hover/handle:h-16 group-hover/handle:shadow-[0_0_8px_#3b82f6]'}`} />
-        </div>
 
         {/* Header with Vessel Flag - Updated for Transparent Hull Protocol: removed blur */}
         <div className={`h-20 flex items-center ${renderMini ? 'justify-center px-0' : 'px-6'} border-b border-stone-200 bg-[#fdfbf7]/80 sticky top-0 shrink-0 whitespace-nowrap z-10`}>

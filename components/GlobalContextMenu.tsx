@@ -20,14 +20,16 @@ import {
   ExternalLink,
   ArrowUpRight,
   Archive,
-  Trash2
+  Trash2,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { db } from '../db';
 import { NotificationManager } from '../utils/notifications';
 
 const IconMap: Record<string, React.FC<any>> = {
     Compass, LayoutDashboard, CheckSquare, FileText, RefreshCw, Search, Copy, Save, LogOut, Terminal, Radar,
-    FolderOpen, FolderPlus, Upload, ExternalLink, ArrowUpRight, Archive, Trash2
+    FolderOpen, FolderPlus, Upload, ExternalLink, ArrowUpRight, Archive, Trash2, Maximize2, Minimize2
 };
 
 export const GlobalContextMenu: React.FC = () => {
@@ -50,6 +52,8 @@ export const GlobalContextMenu: React.FC = () => {
       const selection = window.getSelection()?.toString() || '';
       const x = Math.min(e.clientX, window.innerWidth - 240);
       const y = Math.min(e.clientY, window.innerHeight - 300);
+
+      const isFullscreen = !!document.fullscreenElement;
 
       if (selection) {
           openContextMenu({
@@ -85,6 +89,17 @@ export const GlobalContextMenu: React.FC = () => {
                   { label: 'Go to Vault', action: () => requestNavigation(ViewState.NOTES), icon: 'FileText' },
                   { type: 'SEPARATOR', label: '', action: () => {} },
                   { label: 'Toggle Sonar', action: () => setSonarOpen(!isSonarOpen), icon: 'Radar' },
+                  { 
+                      label: isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen', 
+                      action: () => {
+                          if (isFullscreen) {
+                              document.exitFullscreen().catch(() => {});
+                          } else {
+                              document.documentElement.requestFullscreen().catch(() => {});
+                          }
+                      }, 
+                      icon: isFullscreen ? 'Minimize2' : 'Maximize2' 
+                  },
                   { type: 'HEADER', label: 'System', action: () => {} },
                   { label: 'Refresh Vessel', action: () => window.location.reload(), icon: 'RefreshCw' },
                   { label: 'System Status', action: () => console.log('System Status: Nominal'), icon: 'Terminal' }

@@ -1,5 +1,4 @@
 
-
 export enum ViewState {
   DASHBOARD = 'DASHBOARD',
   INBOX = 'INBOX',
@@ -10,7 +9,8 @@ export enum ViewState {
   REEF = 'REEF',
   DEV_JOURNAL = 'DEV_JOURNAL',
   SETTINGS = 'SETTINGS',
-  DRIFT_REPORT = 'DRIFT_REPORT'
+  DRIFT_REPORT = 'DRIFT_REPORT',
+  SHIP_MANIFEST = 'SHIP_MANIFEST'
 }
 
 export type UserRole = 'STUDENT' | 'SALES' | 'PLANNER' | 'GENERAL';

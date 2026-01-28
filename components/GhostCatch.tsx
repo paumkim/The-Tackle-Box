@@ -10,7 +10,8 @@ import {
   Settings,
   ChevronRight,
   Waves,
-  Users
+  Users,
+  Book
 } from 'lucide-react';
 
 interface GhostCatchProps {
@@ -24,17 +25,17 @@ const IconMap: Record<ViewState, any> = {
   [ViewState.TASKS]: CheckSquare,
   [ViewState.CALENDAR]: Calendar,
   [ViewState.NOTES]: FileText,
-  [ViewState.DEV_JOURNAL]: Activity, // Mapped generic
+  [ViewState.DEV_JOURNAL]: Activity,
   [ViewState.SETTINGS]: Settings,
   [ViewState.DRIFT_REPORT]: Activity,
   [ViewState.AQUARIUM]: Waves,
-  [ViewState.REEF]: Users
+  [ViewState.REEF]: Users,
+  [ViewState.SHIP_MANIFEST]: Book
 };
 
 export const GhostCatch: React.FC<GhostCatchProps> = ({ history, onNavigate }) => {
   if (history.length <= 1) return null;
 
-  // Show last 5 unique items, oldest to newest
   const displayHistory = history.slice(-5);
 
   return (

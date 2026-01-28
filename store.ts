@@ -154,6 +154,10 @@ interface AppState {
   energyLevel: EnergyLevel;
   setEnergyLevel: (level: EnergyLevel) => void;
 
+  // Global Speed State
+  currentSpeed: number;
+  setCurrentSpeed: (speed: number) => void;
+
   // Captain's Role
   userRole: UserRole | null;
   setUserRole: (role: UserRole) => void;
@@ -502,6 +506,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   energyLevel: EnergyLevel.HIGH,
   setEnergyLevel: (level) => set({ energyLevel: level }),
+
+  currentSpeed: 12.4,
+  setCurrentSpeed: (speed) => set({ currentSpeed: speed }),
 
   userRole: savedRole || defaultRole,
   setUserRole: (role) => {
