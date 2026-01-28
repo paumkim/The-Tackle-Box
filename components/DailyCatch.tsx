@@ -22,7 +22,7 @@ export const DailyCatch: React.FC<DailyCatchProps> = ({ onComplete }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
       {/* Parchment Background */}
       <div className="absolute inset-0 bg-[#F8F9FA] opacity-98">
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-50 mix-blend-multiply"></div>

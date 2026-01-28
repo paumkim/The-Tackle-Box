@@ -4,7 +4,6 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { Activity, Clock, CheckCircle, Sunrise, Sun, Moon, Anchor, Fish, Wind, Pin, Coffee, Palmtree, Ship } from 'lucide-react';
 import { TidePhase, TaskPriority, EnergyLevel, EffortLevel, CrewStatus } from '../types';
-import { WeatherStation } from './WeatherStation';
 import { Compass } from './Compass';
 import { OxygenLevels } from './OxygenLevels';
 import { PressureGauge } from './PressureGauge';
@@ -21,7 +20,9 @@ export const Dashboard: React.FC = () => {
   const completedTasksCount = useLiveQuery(() => db.tasks.where('isCompleted').equals(1).count());
   
   const [phase, setPhase] = useState<TidePhase>(TidePhase.DEEP_WATER);
-  const [energy, setEnergy] = useState<EnergyLevel>(EnergyLevel.HIGH);
+  
+  // Use global energy level from Right Rail control
+  const energy = useAppStore(state => state.energyLevel);
   
   const morningBrief = useAppStore(state => state.morningBrief);
   const setMorningBrief = useAppStore(state => state.setMorningBrief);
@@ -41,7 +42,7 @@ export const Dashboard: React.FC = () => {
           subtitle: "Chart the course. Prioritize the urgent.",
           icon: Sunrise,
           color: "text-orange-500",
-          bg: "bg-orange-50 border-orange-100"
+          bg: "bg-orange-50 border-orange-200"
         };
       case TidePhase.DEEP_WATER:
         return {
@@ -49,7 +50,7 @@ export const Dashboard: React.FC = () => {
           subtitle: "Execution mode. Silence the noise.",
           icon: Sun,
           color: "text-blue-500",
-          bg: "bg-blue-50 border-blue-100"
+          bg: "bg-blue-50 border-blue-200"
         };
       case TidePhase.SHORE:
         return {
@@ -57,7 +58,7 @@ export const Dashboard: React.FC = () => {
           subtitle: "Reflect and prepare for tomorrow.",
           icon: Moon,
           color: "text-indigo-500",
-          bg: "bg-indigo-50 border-indigo-100"
+          bg: "bg-indigo-50 border-indigo-200"
         };
     }
   };
@@ -87,7 +88,7 @@ export const Dashboard: React.FC = () => {
   const recommendedTasks = sortedTasks.slice(0, 5);
 
   return (
-    <div className="relative max-w-6xl mx-auto h-full overflow-y-auto pb-12 custom-scrollbar">
+    <div className="relative w-full h-full overflow-y-auto pb-12 custom-scrollbar">
       
       {/* "The Schooling" - Background Data Viz - Subtle Grey */}
       <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-5">
@@ -109,19 +110,15 @@ export const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      <div className="relative z-10">
-        {/* Top Controls - Weather Only */}
-        <div className="flex justify-end items-start mb-6">
-          <WeatherStation energy={energy} setEnergy={setEnergy} />
-        </div>
-
+      <div className="relative z-10 pt-6 px-6">
+        
         {/* Morning Brief (Pinned Note) */}
         <div className="mb-8 relative max-w-xl">
             {/* Paper Shadow */}
-            <div className="absolute inset-0 bg-white transform -rotate-1 shadow-sm border border-stone-200 rounded-sm z-0"></div>
+            <div className="absolute inset-0 bg-white transform -rotate-1 shadow-md border border-stone-300 rounded-sm z-0"></div>
             
             {/* Main Note */}
-            <div className="relative z-10 bg-[#fdfbf7] p-4 border border-stone-200 rounded-sm shadow-sm flex items-start gap-4">
+            <div className="relative z-10 bg-[#fdfbf7] p-4 border border-stone-300 rounded-sm shadow-sm flex items-start gap-4">
                 <div className="w-1 h-12 bg-blue-300 rounded-full mt-1"></div>
                 <div className="flex-1">
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 font-sans">Morning Brief (Focus)</label>
@@ -143,15 +140,15 @@ export const Dashboard: React.FC = () => {
         <motion.header 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`mb-8 p-6 rounded-2xl border shadow-sm ${meta.bg} transition-all duration-700`}
+          className={`mb-8 p-6 rounded-xl border-2 shadow-sm ${meta.bg} transition-all duration-700 bg-[#fdfbf7]/80 backdrop-blur-sm`}
         >
           <div className="flex items-center gap-4 mb-2">
-            <div className={`p-2 bg-white rounded-lg shadow-sm ${meta.color}`}>
+            <div className={`p-2 bg-white rounded-lg shadow-sm border border-stone-200 ${meta.color}`}>
               <PhaseIcon className="w-6 h-6" />
             </div>
-            <h2 className="text-3xl font-bold text-slate-800">{meta.title}</h2>
+            <h2 className="text-3xl font-bold text-slate-800 font-serif">{meta.title}</h2>
           </div>
-          <p className="text-slate-500 ml-14">{meta.subtitle}</p>
+          <p className="text-slate-500 ml-14 font-serif italic">{meta.subtitle}</p>
         </motion.header>
 
         {/* The Manifest Check (Crew Roster) */}
@@ -185,28 +182,31 @@ export const Dashboard: React.FC = () => {
 
         {/* Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <motion.div whileHover={{ scale: 1.02 }} className="bg-white border border-[#E0E0E0] shadow-sm rounded-xl p-6 flex flex-col justify-between h-32 border-t-4 border-t-blue-500">
-            <div className="flex justify-between items-start">
-              <span className="text-slate-500 text-sm font-medium">Total Haul</span>
+          <motion.div whileHover={{ scale: 1.02 }} className="bg-[#fdfbf7] border-2 border-stone-200 shadow-sm rounded-xl p-6 flex flex-col justify-between h-32 relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-30 mix-blend-multiply pointer-events-none"></div>
+            <div className="flex justify-between items-start relative z-10">
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">Total Haul</span>
               <Activity className="w-5 h-5 text-blue-500" />
             </div>
-            <span className="text-3xl font-bold text-slate-800">{taskCount ?? 0}</span>
+            <span className="text-3xl font-bold text-slate-800 font-serif relative z-10">{taskCount ?? 0}</span>
           </motion.div>
           
-          <motion.div whileHover={{ scale: 1.02 }} className="bg-white border border-[#E0E0E0] shadow-sm rounded-xl p-6 flex flex-col justify-between h-32 border-t-4 border-t-purple-500">
-            <div className="flex justify-between items-start">
-              <span className="text-slate-500 text-sm font-medium">Vault Items</span>
+          <motion.div whileHover={{ scale: 1.02 }} className="bg-[#fdfbf7] border-2 border-stone-200 shadow-sm rounded-xl p-6 flex flex-col justify-between h-32 relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-30 mix-blend-multiply pointer-events-none"></div>
+            <div className="flex justify-between items-start relative z-10">
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">Vault Items</span>
               <Clock className="w-5 h-5 text-purple-500" />
             </div>
-            <span className="text-3xl font-bold text-slate-800">{noteCount ?? 0}</span>
+            <span className="text-3xl font-bold text-slate-800 font-serif relative z-10">{noteCount ?? 0}</span>
           </motion.div>
 
-          <motion.div whileHover={{ scale: 1.02 }} className="bg-white border border-[#E0E0E0] shadow-sm rounded-xl p-6 flex flex-col justify-between h-32 border-t-4 border-t-emerald-500">
-            <div className="flex justify-between items-start">
-              <span className="text-slate-500 text-sm font-medium">Efficiency</span>
+          <motion.div whileHover={{ scale: 1.02 }} className="bg-[#fdfbf7] border-2 border-stone-200 shadow-sm rounded-xl p-6 flex flex-col justify-between h-32 relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-30 mix-blend-multiply pointer-events-none"></div>
+            <div className="flex justify-between items-start relative z-10">
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">Efficiency</span>
               <CheckCircle className="w-5 h-5 text-emerald-500" />
             </div>
-            <span className="text-3xl font-bold text-slate-800">98%</span>
+            <span className="text-3xl font-bold text-slate-800 font-serif relative z-10">98%</span>
           </motion.div>
         </div>
       </div>

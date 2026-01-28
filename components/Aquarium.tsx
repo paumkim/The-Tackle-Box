@@ -115,7 +115,7 @@ export const Aquarium: React.FC = () => {
   };
 
   return (
-    <div className="relative max-w-6xl mx-auto h-full flex flex-col overflow-hidden">
+    <div className="relative w-full h-full flex flex-col overflow-hidden px-6 py-6">
       {/* Contained LightTable */}
       <LightTable asset={selectedAsset} onClose={() => setSelectedAsset(null)} />
 

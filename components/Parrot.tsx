@@ -70,6 +70,24 @@ export const Parrot: React.FC = () => {
   const setPatcoAlert = useAppStore(state => state.setPatcoAlert);
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // Life State
+  const [isBlinking, setIsBlinking] = useState(false);
+
+  // Blinking Logic
+  useEffect(() => {
+      const loop = () => {
+          const delay = Math.random() * 4000 + 2000; // 2-6s between blinks
+          setTimeout(() => {
+              setIsBlinking(true);
+              setTimeout(() => {
+                  setIsBlinking(false);
+                  loop();
+              }, 150); // Blink duration
+          }, delay);
+      };
+      loop();
+  }, []);
 
   // Audio Logic
   const playSquawk = () => {
@@ -201,14 +219,14 @@ export const Parrot: React.FC = () => {
   return (
     <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
       
-      {/* Smart Chat Bubble - Constrained to Sidebar Safe Zone (Growing Up) */}
+      {/* Smart Chat Bubble - Layer 4: Highest Priority Signals */}
       <AnimatePresence>
         {(message || isConfirmingBreak) && patcoVisualsEnabled && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.8, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 10 }}
-            className="absolute bottom-full left-0 mb-4 ml-[-8px] w-[240px] bg-[#fdfbf7] border border-slate-300 rounded-xl rounded-bl-none p-4 shadow-xl z-50 origin-bottom-left"
+            className="absolute bottom-full left-0 mb-4 ml-[-8px] max-w-[220px] w-max bg-[#fdfbf7] border border-slate-300 rounded-xl rounded-bl-none p-4 shadow-xl z-[300] origin-bottom-left"
           >
             {isConfirmingBreak ? (
                 <div className="space-y-3">
@@ -223,7 +241,7 @@ export const Parrot: React.FC = () => {
                     </div>
                 </div>
             ) : (
-                <p className="text-xs font-serif text-slate-700 leading-snug">
+                <p className="text-xs font-serif text-slate-700 leading-snug whitespace-normal break-words">
                     {message}
                 </p>
             )}
@@ -265,9 +283,18 @@ export const Parrot: React.FC = () => {
                </>
            ) : (
                <>
-                   {/* Awake Eyes */}
-                   <circle cx="38" cy="40" r="4" fill="#334155" />
-                   <circle cx="62" cy="40" r="4" fill="#334155" />
+                   {/* Awake Eyes - With Blinking */}
+                   {!isBlinking ? (
+                       <>
+                           <circle cx="38" cy="40" r="4" fill="#334155" />
+                           <circle cx="62" cy="40" r="4" fill="#334155" />
+                       </>
+                   ) : (
+                       <>
+                           <path d="M34 40 L 42 40" stroke="#334155" strokeWidth="2" />
+                           <path d="M58 40 L 66 40" stroke="#334155" strokeWidth="2" />
+                       </>
+                   )}
                    
                    {/* Beak */}
                    <path d="M45 48 Q 50 55 55 48" stroke="#fb923c" strokeWidth="3" fill="none" strokeLinecap="round" />

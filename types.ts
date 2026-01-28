@@ -1,4 +1,5 @@
 
+
 export enum ViewState {
   DASHBOARD = 'DASHBOARD',
   INBOX = 'INBOX',
@@ -37,6 +38,8 @@ export enum TidePhase {
 }
 
 export type SidebarState = 'full' | 'mini' | 'hidden';
+
+export type LayoutMode = 'FULL_HULL' | 'EXPANSIVE';
 
 export type CrewStatus = 'AT_OARS' | 'DRIFTING' | 'MAN_OVERBOARD' | 'SHORE_LEAVE' | 'GALLEY' | 'ASHORE';
 
@@ -102,6 +105,7 @@ export interface Note {
   tags?: string[];
   depth?: 'Surface' | 'Shallow' | 'Abyssal'; // Priority
   owner?: string;
+  isFresh?: boolean; // Fresh Catch from Net
 }
 
 export interface Folder {
@@ -125,6 +129,7 @@ export interface Asset {
   tags?: string[];
   linkedId?: number; // Linked to a Task or Note ID
   species?: 'Scales' | 'Shells' | 'Plankton'; // Triage Category
+  isFresh?: boolean; // Fresh Catch from Net
 }
 
 export interface ClipboardItem {

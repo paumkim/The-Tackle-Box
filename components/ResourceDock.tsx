@@ -17,7 +17,7 @@ export const ResourceDock: React.FC = () => {
     setIsDragging(true);
   };
 
-  const handleDragLeave = () => {
+  const handleDragLeave = (e: React.DragEvent) => {
     setIsDragging(false);
   };
 
@@ -84,12 +84,15 @@ export const ResourceDock: React.FC = () => {
 
   return (
     <div 
-        className={`bg-white rounded-xl border transition-all duration-300 relative overflow-hidden flex flex-col h-48 ${isDragging ? 'border-blue-400 bg-blue-50 shadow-inner' : 'border-[#E0E0E0] shadow-sm'}`}
+        className={`bg-[#fdfbf7] rounded-xl border-2 transition-all duration-300 relative overflow-hidden flex flex-col h-48 ${isDragging ? 'border-blue-400 bg-blue-50 shadow-inner' : 'border-stone-200 shadow-sm'}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
     >
-        <div className="flex justify-between items-center px-4 py-3 border-b border-slate-100 bg-[#F8F9FA] z-10">
+        {/* Texture Overlay */}
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-30 mix-blend-multiply pointer-events-none"></div>
+
+        <div className="flex justify-between items-center px-4 py-3 border-b border-stone-200 bg-[#f4f1ea] z-10 relative">
             <h3 className="font-serif font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-2">
                 <LinkIcon className="w-3 h-3" /> Resource Dock
             </h3>
@@ -105,11 +108,11 @@ export const ResourceDock: React.FC = () => {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="bg-slate-50 p-2 border-b border-slate-100"
+                    className="bg-stone-50 p-2 border-b border-stone-200 relative z-10"
                 >
                     <form onSubmit={handleAddManual} className="flex flex-col gap-2">
                         <input 
-                            className="text-xs p-1.5 rounded border border-slate-200" 
+                            className="text-xs p-1.5 rounded border border-stone-300 font-mono" 
                             placeholder="URL (https://...)" 
                             value={newUrl}
                             onChange={e => setNewUrl(e.target.value)}
@@ -117,12 +120,12 @@ export const ResourceDock: React.FC = () => {
                         />
                         <div className="flex gap-2">
                             <input 
-                                className="flex-1 text-xs p-1.5 rounded border border-slate-200" 
+                                className="flex-1 text-xs p-1.5 rounded border border-stone-300 font-serif" 
                                 placeholder="Title (Optional)" 
                                 value={newTitle}
                                 onChange={e => setNewTitle(e.target.value)}
                             />
-                            <button type="submit" className="bg-blue-600 text-white text-xs font-bold px-3 rounded">Add</button>
+                            <button type="submit" className="bg-slate-700 text-white text-xs font-bold px-3 rounded hover:bg-slate-600">Add</button>
                         </div>
                     </form>
                 </motion.div>
@@ -137,7 +140,7 @@ export const ResourceDock: React.FC = () => {
             </div>
         )}
 
-        <div className="flex-1 p-3 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 p-3 overflow-y-auto custom-scrollbar relative z-10">
             {resources && resources.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
                     {resources.map(res => {
@@ -148,21 +151,21 @@ export const ResourceDock: React.FC = () => {
                                 href={res.url} 
                                 target="_blank" 
                                 rel="noreferrer"
-                                className="group flex items-center gap-2 p-2 rounded-lg border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-blue-200 hover:shadow-sm transition-all relative"
+                                className="group flex items-center gap-2 p-2 rounded-lg border border-stone-200 bg-white hover:border-blue-300 hover:shadow-sm transition-all relative"
                             >
-                                <div className="w-6 h-6 rounded flex items-center justify-center bg-white border border-slate-200 shrink-0">
+                                <div className="w-6 h-6 rounded flex items-center justify-center bg-stone-50 border border-stone-200 shrink-0">
                                     {iconUrl ? (
                                         <img src={iconUrl} alt="icon" className="w-4 h-4" />
                                     ) : (
                                         <Globe className="w-3 h-3 text-slate-400" />
                                     )}
                                 </div>
-                                <span className="text-xs font-medium text-slate-700 truncate flex-1">{res.title}</span>
+                                <span className="text-xs font-bold text-slate-700 truncate flex-1 font-serif">{res.title}</span>
                                 <ExternalLink className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 
                                 <button 
                                     onClick={(e) => deleteResource(e, res.id!)}
-                                    className="absolute -top-1 -right-1 bg-white rounded-full p-0.5 shadow border border-slate-200 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500"
+                                    className="absolute -top-1 -right-1 bg-white rounded-full p-0.5 shadow border border-stone-200 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500"
                                 >
                                     <X className="w-3 h-3" />
                                 </button>
@@ -173,7 +176,7 @@ export const ResourceDock: React.FC = () => {
             ) : (
                 <div className="h-full flex flex-col items-center justify-center text-slate-300 text-center">
                     <LinkIcon className="w-8 h-8 mb-1 opacity-20" />
-                    <p className="text-xs">Drag links here to dock.</p>
+                    <p className="text-xs font-serif italic">Drag links here to dock.</p>
                 </div>
             )}
         </div>

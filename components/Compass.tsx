@@ -24,7 +24,6 @@ export const Compass: React.FC<CompassProps> = ({ topTask, pendingCount }) => {
         return () => clearInterval(interval);
     } else {
         // True North Logic: Calculate a distinct "bearing" for the top task.
-        // We simulate a bearing based on the task ID hash to give it a "real" direction on the map.
         const idHash = topTask.id ? (topTask.id * 137) % 360 : 0;
         
         let target = idHash;
@@ -42,7 +41,9 @@ export const Compass: React.FC<CompassProps> = ({ topTask, pendingCount }) => {
   }, [topTask, compassMode]);
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-[#E0E0E0] shadow-sm flex flex-col h-full relative overflow-hidden group">
+    <div className="bg-[#fdfbf7] p-6 rounded-xl border-2 border-stone-200 shadow-sm flex flex-col h-full relative overflow-hidden group">
+      {/* Texture Overlay */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-30 mix-blend-multiply pointer-events-none"></div>
       
       <div className="flex justify-between items-start z-10">
         <div className="flex flex-col">
@@ -50,7 +51,7 @@ export const Compass: React.FC<CompassProps> = ({ topTask, pendingCount }) => {
             <CompassIcon className="w-3 h-3 mr-1" />
             True North
           </span>
-          <h3 className="text-lg font-bold text-slate-800 leading-tight max-w-[200px] line-clamp-2">
+          <h3 className="text-lg font-bold text-slate-800 leading-tight max-w-[200px] line-clamp-2 font-serif">
             {topTask ? topTask.title : "Calm Waters"}
           </h3>
         </div>
@@ -59,7 +60,7 @@ export const Compass: React.FC<CompassProps> = ({ topTask, pendingCount }) => {
         <div className="relative w-16 h-16">
            <svg viewBox="0 0 100 100" className="w-full h-full">
               {/* Outer Ring */}
-              <circle cx="50" cy="50" r="45" stroke="#e2e8f0" strokeWidth="2" fill="none" />
+              <circle cx="50" cy="50" r="45" stroke="#cbd5e1" strokeWidth="2" fill="none" />
               {/* Ticks */}
               {[...Array(12)].map((_, i) => (
                   <line 
@@ -78,7 +79,7 @@ export const Compass: React.FC<CompassProps> = ({ topTask, pendingCount }) => {
              animate={{ rotate: rotation }}
              transition={{ type: "spring", stiffness: 40, damping: 12 }}
            >
-              <Navigation className="w-8 h-8 fill-current text-blue-600 drop-shadow-md" />
+              <Navigation className="w-8 h-8 fill-current text-blue-700 drop-shadow-md" />
            </motion.div>
         </div>
       </div>
@@ -86,16 +87,16 @@ export const Compass: React.FC<CompassProps> = ({ topTask, pendingCount }) => {
       <div className="mt-auto pt-6 z-10">
         <div className="flex items-center justify-between text-xs text-slate-500 font-mono">
           <span>{pendingCount} OBJECTIVES</span>
-          <span className={topTask?.priority === 'URGENT' ? 'text-red-500 font-bold animate-pulse' : 'text-blue-600 font-bold'}>
+          <span className={topTask?.priority === 'URGENT' ? 'text-red-500 font-bold animate-pulse' : 'text-blue-700 font-bold'}>
               {topTask ? `BEARING ${Math.abs(Math.round(rotation))}°` : 'DRIFTING'}
           </span>
         </div>
         
         {/* Current Strength Indicator */}
-        <div className="mt-2 w-full h-1 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+        <div className="mt-2 w-full h-1 bg-stone-200 rounded-full overflow-hidden border border-stone-300">
           {topTask && (
               <motion.div 
-                className={`h-full rounded-full ${topTask.effort === 'HIGH' ? 'bg-orange-500' : 'bg-blue-500'}`}
+                className={`h-full rounded-full ${topTask.effort === 'HIGH' ? 'bg-orange-500' : 'bg-blue-600'}`}
                 initial={{ width: 0 }}
                 animate={{ width: topTask.effort === 'HIGH' ? '80%' : (topTask.effort === 'MEDIUM' ? '50%' : '20%') }}
                 transition={{ duration: 1 }}

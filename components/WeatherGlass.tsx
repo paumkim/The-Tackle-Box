@@ -44,11 +44,11 @@ export const WeatherGlass: React.FC = () => {
 
   if (!locationEnabled && signalStatus === 'OFFLINE') {
       return (
-        <div className="bg-white p-6 rounded-xl border-2 border-dashed border-stone-300 shadow-sm flex flex-col items-center justify-center h-full relative overflow-hidden text-center group">
+        <div className="bg-[#fdfbf7] p-6 rounded-xl border-2 border-dashed border-stone-300 shadow-sm flex flex-col items-center justify-center h-full relative overflow-hidden text-center group">
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-50 mix-blend-multiply"></div>
             
             <Compass className="w-8 h-8 text-stone-300 mb-2" />
-            <h3 className="text-stone-500 text-xs font-serif font-bold uppercase tracking-wider mb-2">
+            <h3 className="text-stone-500 text-xs font-serif font-bold uppercase tracking-wider mb-2 relative z-10">
                 Sensor Offline
             </h3>
             
@@ -70,7 +70,7 @@ export const WeatherGlass: React.FC = () => {
 
   // Fallback or Active Data Render
   return (
-    <div className="bg-white p-6 rounded-xl border border-[#E0E0E0] shadow-[2px_4px_12px_rgba(0,0,0,0.05)] flex flex-col h-full relative overflow-hidden group">
+    <div className="bg-[#fdfbf7] p-6 rounded-xl border-2 border-stone-200 shadow-[2px_4px_12px_rgba(0,0,0,0.05)] flex flex-col h-full relative overflow-hidden group">
       {/* Paper Texture Overlay */}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-30 mix-blend-multiply pointer-events-none"></div>
       

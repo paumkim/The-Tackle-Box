@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import { Contact, SidebarState, UserRole, NotificationSettings, MapStyle, CompassMode, CrewMember, CrewStatus, FlareType, WeatherCondition, GPSCoordinates, Achievement, WeatherData, ThemeMode } from './types';
+import { Contact, SidebarState, UserRole, NotificationSettings, MapStyle, CompassMode, CrewMember, CrewStatus, FlareType, WeatherCondition, GPSCoordinates, Achievement, WeatherData, ThemeMode, EnergyLevel, ViewState, LayoutMode } from './types';
 import { db } from './db';
 import { NotificationManager } from './utils/notifications';
 
@@ -18,6 +18,25 @@ interface AppState {
   toggleSidebar: () => void; // Toggles between saved state and hidden
   toggleMiniMode: () => void; // Toggle between Full and Mini specifically
   
+  // Layout Configuration
+  layoutMode: LayoutMode;
+  setLayoutMode: (mode: LayoutMode) => void;
+
+  // Settings Modal State
+  isSettingsOpen: boolean;
+  setSettingsOpen: (isOpen: boolean) => void;
+
+  // Chat / Hook State
+  isChatOpen: boolean;
+  setChatOpen: (isOpen: boolean) => void;
+  isCrewTyping: boolean;
+  setCrewTyping: (isTyping: boolean) => void;
+
+  // Navigation
+  navigationRequest: ViewState | null;
+  requestNavigation: (view: ViewState) => void;
+  resolveNavigation: () => void;
+
   pressureScore: number;
   setPressureScore: (score: number) => void;
   lastCopied: string | null;
@@ -31,7 +50,7 @@ interface AppState {
   hookedContactId: number | null;
   setHookedContactId: (id: number | null) => void;
   
-  // Settings
+  // Settings (Toggles)
   quietMode: boolean;
   toggleQuietMode: () => void;
   themeMode: ThemeMode;
@@ -40,6 +59,8 @@ interface AppState {
   setHighContrastMode: (enabled: boolean) => void;
   localSearchEnabled: boolean;
   setLocalSearchEnabled: (enabled: boolean) => void;
+  wakeLockEnabled: boolean;
+  setWakeLockEnabled: (enabled: boolean) => void;
 
   // Immersion & Soundscape
   cabinMode: boolean;
@@ -93,6 +114,10 @@ interface AppState {
   // The Fishing Line (Active Focus)
   activeTaskId: number | null;
   setActiveTask: (id: number | null) => void;
+  
+  // Response Ballast
+  energyLevel: EnergyLevel;
+  setEnergyLevel: (level: EnergyLevel) => void;
 
   // Captain's Role
   userRole: UserRole | null;
@@ -179,6 +204,10 @@ interface AppState {
   setMorningBrief: (text: string) => void;
   supplyLink: string | null;
   setSupplyLink: (url: string | null) => void;
+  
+  // Feature Flags
+  bilgePumpEnabled: boolean;
+  setBilgePumpEnabled: (val: boolean) => void;
 }
 
 // Load initial state from local storage
@@ -188,6 +217,8 @@ const initialState = savedState || 'full';
 // Default to 'PLANNER' (The Navigator) if no role is saved.
 const savedRole = localStorage.getItem('vessel_role') as UserRole | null;
 const defaultRole = 'PLANNER'; 
+
+const savedLayoutMode = localStorage.getItem('vessel_layout_mode') as LayoutMode | null;
 
 const savedNotifications = localStorage.getItem('vessel_notifications');
 const savedMapStyle = localStorage.getItem('vessel_map_style') as MapStyle | null;
@@ -205,6 +236,7 @@ const savedCabin = localStorage.getItem('vessel_cabin_mode');
 const savedTheme = localStorage.getItem('vessel_theme') as ThemeMode | null;
 const savedHighContrast = localStorage.getItem('vessel_high_contrast');
 const savedLocalSearch = localStorage.getItem('vessel_local_search');
+const savedWakeLock = localStorage.getItem('vessel_wake_lock');
 
 // P.A.T.C.O. Persistence
 const savedPatcoAudio = localStorage.getItem('vessel_patco_audio');
@@ -233,6 +265,9 @@ const initialBrief = (savedBriefDate === today) ? (localStorage.getItem('vessel_
 // Supply Hook
 const savedSupplyLink = localStorage.getItem('vessel_supply_link');
 const savedHookedContact = localStorage.getItem('vessel_hooked_contact');
+
+// Feature Flags Persistence
+const savedBilgePump = localStorage.getItem('vessel_bilge_pump_enabled');
 
 // Default Coordinates (Cupertino - Apple Park / Tech Hub Proxy)
 const DEFAULT_HOME_PORT: GPSCoordinates = { latitude: 37.3346, longitude: -122.0090 };
@@ -277,6 +312,24 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   
+  layoutMode: savedLayoutMode || 'EXPANSIVE',
+  setLayoutMode: (mode) => {
+      localStorage.setItem('vessel_layout_mode', mode);
+      set({ layoutMode: mode });
+  },
+
+  isSettingsOpen: false,
+  setSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
+
+  isChatOpen: false,
+  setChatOpen: (isOpen) => set({ isChatOpen: isOpen }),
+  isCrewTyping: false,
+  setCrewTyping: (val) => set({ isCrewTyping: val }),
+
+  navigationRequest: null,
+  requestNavigation: (view) => set({ navigationRequest: view }),
+  resolveNavigation: () => set({ navigationRequest: null }),
+
   pressureScore: 0,
   setPressureScore: (score) => set({ pressureScore: score }),
   
@@ -291,8 +344,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   hookedContactId: savedHookedContact ? parseInt(savedHookedContact) : null,
   setHookedContactId: (id) => {
-      if (id) localStorage.setItem('vessel_hooked_contact', id.toString());
-      else localStorage.removeItem('vessel_hooked_contact');
+      if (id) {
+          localStorage.setItem('vessel_hooked_contact', id.toString());
+          set({ isChatOpen: true }); // Auto-open chat when hooked
+      } else {
+          localStorage.removeItem('vessel_hooked_contact');
+          set({ isChatOpen: false }); // Close chat when released
+      }
       set({ hookedContactId: id });
   },
 
@@ -313,6 +371,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   setLocalSearchEnabled: (enabled) => {
       localStorage.setItem('vessel_local_search', String(enabled));
       set({ localSearchEnabled: enabled });
+  },
+  wakeLockEnabled: savedWakeLock === 'true',
+  setWakeLockEnabled: (enabled) => {
+      localStorage.setItem('vessel_wake_lock', String(enabled));
+      set({ wakeLockEnabled: enabled });
   },
 
   cabinMode: savedCabin === 'true',
@@ -388,6 +451,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   activeTaskId: null,
   setActiveTask: (id) => set({ activeTaskId: id }),
+  
+  energyLevel: EnergyLevel.HIGH,
+  setEnergyLevel: (level) => set({ energyLevel: level }),
 
   userRole: savedRole || defaultRole,
   setUserRole: (role) => {
@@ -689,5 +755,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       if(url) localStorage.setItem('vessel_supply_link', url);
       else localStorage.removeItem('vessel_supply_link');
       set({ supplyLink: url });
+  },
+  
+  bilgePumpEnabled: savedBilgePump === 'true',
+  setBilgePumpEnabled: (val) => {
+      localStorage.setItem('vessel_bilge_pump_enabled', String(val));
+      set({ bilgePumpEnabled: val });
   }
 }));

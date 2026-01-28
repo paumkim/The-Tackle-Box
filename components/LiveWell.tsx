@@ -244,7 +244,7 @@ export const LiveWell: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ i
 
   return (
     <div 
-      className={`fixed inset-x-0 top-0 h-[65vh] bg-[#F8F9FA] border-b border-slate-200 shadow-2xl transform transition-transform duration-300 z-50 flex flex-col ${
+      className={`fixed inset-x-0 top-0 h-[65vh] bg-[#F8F9FA] border-b border-slate-200 shadow-2xl transform transition-transform duration-300 z-[100] flex flex-col ${
         isOpen ? 'translate-y-0' : '-translate-y-full'
       }`}
     >

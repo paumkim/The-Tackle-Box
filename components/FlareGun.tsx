@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAppStore } from '../store';
 import { Flame, X, AlertTriangle, Zap, CheckCircle2 } from 'lucide-react';
@@ -18,7 +19,7 @@ export const FlareGun: React.FC = () => {
   };
 
   return (
-    <div className="relative z-50">
+    <div className="relative z-[300]">
       <AnimatePresence>
         {isOpen && (
           <motion.div 

@@ -67,7 +67,7 @@ export const DriftReport: React.FC = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto h-full overflow-y-auto pb-10 custom-scrollbar">
+    <div className="w-full h-full overflow-y-auto pb-10 custom-scrollbar px-6 py-6">
       <header className="mb-8 border-b border-slate-200 pb-6 flex justify-between items-end">
         <div>
             <h2 className="text-2xl font-bold text-slate-800 font-serif">The Logbook</h2>

@@ -53,15 +53,23 @@ import {
   ShieldAlert,
   MousePointer,
   Search,
-  Timer
+  Timer,
+  RefreshCcw,
+  Droplets,
+  X
 } from 'lucide-react';
 import { db } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useAppStore } from '../store';
 import { NotificationManager } from '../utils/notifications';
 import { UserRole, MapStyle, CompassMode, Contact } from '../types';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export const Settings: React.FC = () => {
+  const isSettingsOpen = useAppStore(state => state.isSettingsOpen);
+  const setSettingsOpen = useAppStore(state => state.setSettingsOpen);
+  const sidebarState = useAppStore(state => state.sidebarState);
+  
   const [activePath, setActivePath] = useState<string[]>([]);
   const snapshots = useLiveQuery(() => db.snapshots.orderBy('timestamp').reverse().toArray());
   const [morningCastEnabled, setMorningCastEnabled] = useState(false);
@@ -70,7 +78,6 @@ export const Settings: React.FC = () => {
   // Store Hooks
   const quietMode = useAppStore(state => state.quietMode);
   const toggleQuietMode = useAppStore(state => state.toggleQuietMode);
-  const sidebarState = useAppStore(state => state.sidebarState);
   const toggleSidebar = useAppStore(state => state.toggleSidebar);
   
   const userRole = useAppStore(state => state.userRole);
@@ -108,6 +115,13 @@ export const Settings: React.FC = () => {
   const updateCrewPermissions = useAppStore(state => state.updateCrewPermissions);
   const localSearchEnabled = useAppStore(state => state.localSearchEnabled);
   const setLocalSearchEnabled = useAppStore(state => state.setLocalSearchEnabled);
+  const bilgePumpEnabled = useAppStore(state => state.bilgePumpEnabled);
+  const setBilgePumpEnabled = useAppStore(state => state.setBilgePumpEnabled);
+  const setBilgeLevel = useAppStore(state => state.setBilgeLevel);
+  const layoutMode = useAppStore(state => state.layoutMode);
+  const setLayoutMode = useAppStore(state => state.setLayoutMode);
+  const wakeLockEnabled = useAppStore(state => state.wakeLockEnabled);
+  const setWakeLockEnabled = useAppStore(state => state.setWakeLockEnabled);
 
   // P.A.T.C.O. Hooks
   const patcoAudioEnabled = useAppStore(state => state.patcoAudioEnabled);
@@ -160,12 +174,21 @@ export const Settings: React.FC = () => {
     }
   };
 
+  const performEmergencyPump = () => {
+      setBilgeLevel(0);
+      NotificationManager.send("Bilge Clear", "Emergency pump cycle complete. Water cleared.");
+  }
+
   const navigate = (path: string) => {
     setActivePath([...activePath, path]);
   };
 
   const goBack = () => {
     setActivePath(activePath.slice(0, -1));
+  };
+
+  const handleClose = () => {
+      setSettingsOpen(false);
   };
 
   const getRoleLabel = (role: string | null) => {
@@ -183,6 +206,16 @@ export const Settings: React.FC = () => {
       }
   }
 
+  // Anchoring Calculation: Strictly flush to rail
+  const getLeftOffset = () => {
+      switch(sidebarState) {
+          case 'full': return '260px'; 
+          case 'mini': return '68px';
+          case 'hidden': return '0px'; 
+          default: return '260px';
+      }
+  };
+
   const renderContent = () => {
     const currentLevel = activePath[activePath.length - 1];
 
@@ -191,7 +224,7 @@ export const Settings: React.FC = () => {
       return (
         <div className="space-y-4 pb-10">
            {/* Console Controls */}
-           <div className="grid grid-cols-1 gap-4 p-4 bg-slate-100/50 rounded-xl border border-slate-200">
+           <div className="grid grid-cols-1 gap-4 p-4 bg-slate-50/50 rounded-xl border border-slate-200/60">
              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Deck Controls</h3>
              
              <TactileToggle 
@@ -229,22 +262,61 @@ export const Settings: React.FC = () => {
             <SettingItem icon={Lock} label="Crew Permissions" onClick={() => navigate('permissions')} />
             <SettingItem icon={Sliders} label="Navigation Calibration" onClick={() => navigate('calibration')} />
             <SettingItem icon={PenTool} label="Vessel Customization" onClick={() => navigate('customization')} />
+            <SettingItem icon={Wrench} label="Experimental Features" onClick={() => navigate('experimental')} />
             
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2 mt-4">Below Deck</h3>
             <SettingItem icon={Contrast} label="Visual Accessibility" onClick={() => navigate('visuals')} />
-            <SettingItem icon={ShieldAlert} label="Emergency Reef" onClick={() => navigate('emergency')} />
 
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2 mt-4">Ship's Systems</h3>
-            <SettingItem icon={Bell} label="Signal Beacons" value={notificationSettings.enabled ? 'On' : 'Off'} onClick={() => navigate('notifications')} />
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2 mt-4">System Instruments</h3>
+            <SettingItem icon={Bell} label="Bridge Alerts" value={notificationSettings.enabled ? 'On' : 'Off'} onClick={() => navigate('notifications')} />
+            <SettingItem icon={ShieldAlert} label="S.O.S. Signal" onClick={() => navigate('emergency')} />
             <SettingItem icon={Book} label="The Ship's Library" onClick={() => navigate('manifesto')} />
             <SettingItem icon={History} label="The Logbook (Versions)" onClick={() => navigate('snapshots')} />
             <SettingItem icon={Activity} label="System Diagnostics" onClick={() => navigate('diagnostics')} />
+            
+            {/* Navigator's Watch */}
+            <ToggleSettingItem 
+                icon={Eye} 
+                label="Prevent Screen Sleep" 
+                description="Maintains full brightness for long voyages"
+                active={wakeLockEnabled}
+                onToggle={setWakeLockEnabled}
+            />
            </div>
         </div>
       );
     }
 
     // --- SUB-MENUS ---
+
+    if (currentLevel === 'experimental') {
+        return (
+            <div className="space-y-6">
+                <Header onBack={goBack} title="Experimental Features" />
+                <div className="px-4 space-y-4">
+                    <PaperCard title="Beta Mechanics">
+                        <GraphiteToggle 
+                            label="Interactive Bilge Pump"
+                            checked={bilgePumpEnabled}
+                            onChange={setBilgePumpEnabled}
+                            description="Enables the visual water rising mechanic based on overdue tasks."
+                        />
+                        
+                        {bilgePumpEnabled && (
+                            <div className="mt-4 pt-4 border-t border-slate-100">
+                                <button 
+                                    onClick={performEmergencyPump}
+                                    className="w-full flex items-center justify-center gap-2 p-3 bg-red-50 text-red-600 rounded-lg border border-red-200 hover:bg-red-100 transition-colors font-bold text-xs uppercase tracking-wider"
+                                >
+                                    <RefreshCcw className="w-4 h-4" /> Emergency Pump (Clear Water)
+                                </button>
+                            </div>
+                        )}
+                    </PaperCard>
+                </div>
+            </div>
+        )
+    }
 
     if (currentLevel === 'visuals') {
         return (
@@ -515,14 +587,14 @@ export const Settings: React.FC = () => {
                             <div className="flex gap-2">
                                 <button 
                                     onClick={() => setUnitSystem('IMPERIAL')}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border flex flex-col items-center justify-center gap-1 transition-all ${unitSystem === 'IMPERIAL' ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-inner' : 'bg-white border-slate-200 text-slate-500'}`}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border flex flex-col items-center justify-center gap-1 transition-all ${unitSystem === 'IMPERIAL' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     <span className="uppercase tracking-widest">USA</span>
                                     <span className="font-mono text-[10px] opacity-70">Ft / °F / Miles</span>
                                 </button>
                                 <button 
                                     onClick={() => setUnitSystem('METRIC')}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border flex flex-col items-center justify-center gap-1 transition-all ${unitSystem === 'METRIC' ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-inner' : 'bg-white border-slate-200 text-slate-500'}`}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border flex flex-col items-center justify-center gap-1 transition-all ${unitSystem === 'METRIC' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     <span className="uppercase tracking-widest">Metric</span>
                                     <span className="font-mono text-[10px] opacity-70">M / °C / Km</span>
@@ -631,6 +703,32 @@ export const Settings: React.FC = () => {
                             min={0} max={100}
                             icon={Layers}
                         />
+                        
+                        <div className="mt-6 space-y-2">
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                                <Compass className="w-3 h-3" /> Hull Configuration
+                            </label>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => setLayoutMode('FULL_HULL')}
+                                    className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all flex flex-col items-center gap-1 ${layoutMode === 'FULL_HULL' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <span>Full Hull</span>
+                                    <span className="font-normal opacity-70 text-[9px]">(Centered)</span>
+                                </button>
+                                <button 
+                                    onClick={() => setLayoutMode('EXPANSIVE')}
+                                    className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all flex flex-col items-center gap-1 ${layoutMode === 'EXPANSIVE' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <span>Expansive Sea</span>
+                                    <span className="font-normal opacity-70 text-[9px]">(Edge-to-Edge)</span>
+                                </button>
+                            </div>
+                            <p className="text-[10px] text-slate-400 italic mt-1">
+                                "Full Hull" snaps instruments to the console (Recommended). "Expansive Sea" pushes rails to the horizon.
+                            </p>
+                        </div>
+
                         <div className="mt-6 space-y-2">
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Compass Mode</label>
                             <div className="flex gap-2">
@@ -638,7 +736,7 @@ export const Settings: React.FC = () => {
                                     <button 
                                         key={mode}
                                         onClick={() => setCompassMode(mode as CompassMode)}
-                                        className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all ${compassMode === mode ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}
+                                        className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all ${compassMode === mode ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                     >
                                         {mode}
                                     </button>
@@ -650,52 +748,19 @@ export const Settings: React.FC = () => {
                             <div className="flex gap-2">
                                 <button 
                                     onClick={() => setMapStyle('PAPER')}
-                                    className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all ${mapStyle === 'PAPER' ? 'bg-[#fdfbf7] text-stone-800 border-stone-400 shadow-inner ring-1 ring-stone-200' : 'bg-white text-slate-500 border-slate-200'}`}
+                                    className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all ${mapStyle === 'PAPER' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     Classic Paper
                                 </button>
                                 <button 
                                     onClick={() => setMapStyle('HOLOGRAPHIC')}
-                                    className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all ${mapStyle === 'HOLOGRAPHIC' ? 'bg-slate-900 text-cyan-400 border-cyan-900 shadow-inner' : 'bg-white text-slate-500 border-slate-200'}`}
+                                    className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all ${mapStyle === 'HOLOGRAPHIC' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     Holographic
                                 </button>
                             </div>
                         </div>
                     </PaperCard>
-                </div>
-            </div>
-        )
-    }
-
-    if (currentLevel === 'role') {
-        return (
-            <div className="space-y-4">
-                <Header onBack={goBack} title="Vessel Class" />
-                <p className="text-sm text-slate-500 px-4">Your class determines the layout of the ship and your flag.</p>
-                
-                <div className="space-y-2 px-2">
-                    <RoleCard 
-                        role="PLANNER" 
-                        label="The Navigator" 
-                        desc="Prioritizes Bridge & Deck. Heavy project management focus." 
-                        currentRole={userRole} 
-                        onSelect={setUserRole} 
-                    />
-                    <RoleCard 
-                        role="STUDENT" 
-                        label="The Scholar" 
-                        desc="Prioritizes Vault & Calendar. Research and study focus." 
-                        currentRole={userRole} 
-                        onSelect={setUserRole} 
-                    />
-                    <RoleCard 
-                        role="SALES" 
-                        label="The Merchant" 
-                        desc="Prioritizes Reef & Inbox. Fast communication focus." 
-                        currentRole={userRole} 
-                        onSelect={setUserRole} 
-                    />
                 </div>
             </div>
         )
@@ -722,13 +787,13 @@ export const Settings: React.FC = () => {
                             <div className="flex gap-2">
                                 <button 
                                     onClick={() => updateNotificationSettings({ frequency: 'IMMEDIATE' })}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border ${notificationSettings.frequency === 'IMMEDIATE' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-slate-200 text-slate-500'}`}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border ${notificationSettings.frequency === 'IMMEDIATE' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     Immediate
                                 </button>
                                 <button 
                                     onClick={() => updateNotificationSettings({ frequency: 'DIGEST' })}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border ${notificationSettings.frequency === 'DIGEST' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'border-slate-200 text-slate-500'}`}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border ${notificationSettings.frequency === 'DIGEST' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     Daily Digest
                                 </button>
@@ -745,26 +810,59 @@ export const Settings: React.FC = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto h-full flex flex-col">
-      <header className="mb-8 flex-shrink-0">
-        <h2 className="text-2xl font-bold text-slate-800">Settings</h2>
-        <p className="text-slate-500">Configure your tackle box.</p>
-      </header>
-      
-      {/* SCROLL FIX APPLIED: h-full with internal scrolling container */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full relative ship-systems-container pointer-events-auto">
-         <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {renderContent()}
-         </div>
-      </div>
-    </div>
+    <AnimatePresence>
+      {isSettingsOpen && (
+        <>
+          {/* Dimmer (Night Watch) - Behind everything interactive except sidebar */}
+          <motion.div 
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[998]"
+              onClick={handleClose}
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+          />
+          
+          {/* Anchored Settings Deck (Pneumatic Slide) - Behind Sidebar, Above Dimmer */}
+          <motion.div 
+              style={{ left: getLeftOffset() }}
+              className="fixed top-0 bottom-0 w-[320px] z-[999] bg-[#fdfbf7]/90 backdrop-blur-sm shadow-2xl border-r border-y border-slate-200/50 rounded-r-2xl overflow-hidden flex flex-col pointer-events-auto"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: "tween", ease: [0.4, 0, 0.2, 1], duration: 0.3 }}
+          >
+              {/* Brass Close Latch */}
+              <div className="absolute top-4 right-4 z-50">
+                  <button 
+                      onClick={handleClose}
+                      className="w-10 h-10 rounded-full flex items-center justify-center shadow-md border border-amber-900/30 bg-gradient-to-br from-[#fcd34d] via-[#b45309] to-[#78350f] hover:brightness-110 active:scale-95 transition-all group"
+                      title="Close Settings Deck"
+                  >
+                      <X className="w-5 h-5 text-slate-900 group-hover:text-black" />
+                      {/* Shine Effect */}
+                      <div className="absolute top-1 left-2 w-3 h-2 bg-white/40 rounded-full blur-[1px]"></div>
+                  </button>
+              </div>
+
+              <header className="px-8 py-6 border-b border-slate-200/50 bg-white/40 shrink-0 mt-2">
+                  <h2 className="text-2xl font-bold text-slate-800 font-serif">Settings Deck</h2>
+                  <p className="text-slate-500 text-sm font-sans">Configure your tackle box.</p>
+              </header>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+                  {renderContent()}
+              </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 };
 
 // --- Sub-Components ---
 
 const Header: React.FC<{ onBack: () => void, title: string }> = ({ onBack, title }) => (
-  <div className="flex items-center mb-4 text-slate-800 font-semibold cursor-pointer hover:text-blue-600 sticky top-0 bg-white/95 backdrop-blur-sm z-20 py-3 border-b border-slate-100 px-4" onClick={onBack}>
+  <div className="flex items-center mb-4 text-slate-800 font-semibold cursor-pointer hover:text-blue-600 sticky top-0 bg-[#fdfbf7]/95 backdrop-blur-sm z-20 py-4 border-b border-slate-100 px-8" onClick={onBack}>
     <span className="mr-2 text-slate-400">&larr;</span> {title}
   </div>
 );
@@ -772,7 +870,7 @@ const Header: React.FC<{ onBack: () => void, title: string }> = ({ onBack, title
 const SettingItem: React.FC<{ icon: any, label: string, value?: string, onClick?: () => void }> = ({ icon: Icon, label, value, onClick }) => (
   <div 
     onClick={onClick}
-    className={`flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-transparent mx-2 my-1 ${onClick ? 'cursor-pointer hover:bg-white hover:border-slate-200 hover:shadow-sm' : 'opacity-75'} transition-all`}
+    className={`flex items-center justify-between p-4 bg-white/60 rounded-lg border border-transparent mx-2 my-1 ${onClick ? 'cursor-pointer hover:bg-white hover:border-slate-200 hover:shadow-sm' : 'opacity-75'} transition-all`}
   >
     <div className="flex items-center text-slate-700">
       <Icon className="w-5 h-5 mr-3 text-slate-500" />
@@ -785,10 +883,30 @@ const SettingItem: React.FC<{ icon: any, label: string, value?: string, onClick?
   </div>
 );
 
+const ToggleSettingItem: React.FC<{ icon: any, label: string, description?: string, active: boolean, onToggle: (val: boolean) => void }> = ({ icon: Icon, label, description, active, onToggle }) => (
+  <div className="flex items-center justify-between p-4 bg-white/60 rounded-lg border border-transparent mx-2 my-1 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all cursor-pointer" onClick={() => onToggle(!active)}>
+    <div className="flex items-center text-slate-700 gap-3">
+        <div className={`p-1.5 rounded-md transition-colors ${active ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+            <Icon className="w-5 h-5" />
+        </div>
+        <div>
+            <div className="font-medium text-sm text-slate-800">{label}</div>
+            {description && <div className="text-[10px] text-slate-400">{description}</div>}
+        </div>
+    </div>
+    {/* Toggle Switch */}
+    <div 
+        className={`relative w-10 h-5 rounded-full border transition-colors duration-200 ${active ? 'bg-emerald-500 border-emerald-600' : 'bg-stone-300 border-stone-400'}`}
+    >
+        <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${active ? 'translate-x-5' : 'translate-x-0'}`}></div>
+    </div>
+  </div>
+);
+
 const TactileToggle: React.FC<{ label: string, description: string, active: boolean, onToggle: () => void, icon: any }> = ({ label, description, active, onToggle, icon: Icon }) => (
-    <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-all cursor-pointer" onClick={onToggle}>
+    <div className="flex items-center justify-between p-4 bg-white/80 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-all cursor-pointer group" onClick={onToggle}>
         <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${active ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
+            <div className={`p-2 rounded-lg transition-colors ${active ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
                 <Icon className="w-5 h-5" />
             </div>
             <div>
@@ -797,12 +915,8 @@ const TactileToggle: React.FC<{ label: string, description: string, active: bool
             </div>
         </div>
         
-        <div className={`tactile-switch ${active ? 'active' : ''}`}>
-            <div className="tactile-switch-handle">
-                <div className="tactile-lines">
-                    <span></span><span></span><span></span>
-                </div>
-            </div>
+        <div className={`relative w-14 h-7 rounded-full border transition-colors duration-200 ${active ? 'bg-emerald-500 border-emerald-600' : 'bg-stone-300 border-stone-400'}`}>
+            <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${active ? 'translate-x-7' : 'translate-x-0'}`}></div>
         </div>
     </div>
 );
@@ -813,15 +927,14 @@ const GraphiteToggle: React.FC<{ label: string, description?: string, checked: b
            <div className="font-bold text-slate-700 text-sm mb-1">{label}</div>
            {description && <div className="text-xs text-slate-500 leading-tight max-w-[200px]">{description}</div>}
        </div>
-       <div className="relative w-12 h-6 rounded-full border-2 border-slate-300 bg-slate-100 flex items-center transition-colors group-hover:border-slate-400">
-           {checked && <div className="absolute inset-0 bg-slate-800 rounded-full opacity-10"></div>}
-           <div className={`w-4 h-4 rounded-full bg-slate-600 shadow-sm transform transition-transform duration-200 ${checked ? 'translate-x-6 bg-slate-800' : 'translate-x-1 bg-slate-400'}`}></div>
+       <div className={`relative w-12 h-6 rounded-full border transition-colors duration-200 ${checked ? 'bg-emerald-500 border-emerald-600' : 'bg-stone-300 border-stone-400'}`}>
+           <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${checked ? 'translate-x-6' : 'translate-x-0'}`}></div>
        </div>
     </div>
 );
 
 const GraphiteSlider: React.FC<{ label: string, value: number, onChange: (val: number) => void, min: number, max: number, icon: any }> = ({ label, value, onChange, min, max, icon: Icon }) => (
-    <div className="bg-white p-4 rounded-lg border border-[#E0E0E0] shadow-sm">
+    <div className="bg-white/80 p-4 rounded-lg border border-stone-200 shadow-sm">
         <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-slate-700 font-bold text-sm">
                 <Icon className="w-4 h-4 text-slate-400" />
@@ -841,7 +954,7 @@ const GraphiteSlider: React.FC<{ label: string, value: number, onChange: (val: n
 );
 
 const PaperCard: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
-    <div className="bg-white border border-[#E0E0E0] rounded-lg p-4 shadow-sm relative overflow-hidden">
+    <div className="bg-white/90 border border-slate-200 rounded-lg p-4 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-8 h-8 bg-gradient-to-bl from-stone-200 to-transparent opacity-50"></div>
         <h4 className="font-serif font-bold text-slate-800 mb-4 text-sm uppercase tracking-wider border-b border-stone-200 pb-2">{title}</h4>
         {children}
@@ -851,13 +964,13 @@ const PaperCard: React.FC<{ title: string, children: React.ReactNode }> = ({ tit
 const RoleCard: React.FC<{ role: UserRole, label: string, desc: string, currentRole: UserRole | null, onSelect: (r: UserRole) => void }> = ({ role, label, desc, currentRole, onSelect }) => (
     <div 
         onClick={() => onSelect(role)}
-        className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${currentRole === role ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200' : 'bg-white border-slate-200 hover:border-blue-300'}`}
+        className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${currentRole === role ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md' : 'bg-transparent border-slate-400 hover:bg-slate-50'}`}
     >
         <div>
-            <h4 className="font-bold text-slate-700">{label}</h4>
+            <h4 className={`font-bold ${currentRole === role ? 'text-slate-900' : 'text-slate-700'}`}>{label}</h4>
             <p className="text-xs text-slate-500 mt-1">{desc}</p>
         </div>
-        {currentRole === role && <div className="bg-blue-500 text-white p-1 rounded-full"><Check className="w-4 h-4" /></div>}
+        {currentRole === role && <div className="bg-emerald-500 text-white p-1 rounded-full"><Check className="w-4 h-4" /></div>}
     </div>
 );
 

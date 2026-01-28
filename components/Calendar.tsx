@@ -32,7 +32,7 @@ export const Calendar: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col max-w-6xl mx-auto">
+    <div className="h-full flex flex-col w-full px-6 py-6">
       <header className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">The Chart Room</h2>

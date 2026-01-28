@@ -146,7 +146,7 @@ export const DepartureManifest: React.FC<DepartureManifestProps> = ({ onComplete
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9999] flex items-start justify-center pt-32 px-4"
+        className="fixed inset-0 z-[200] flex items-start justify-center pt-32 px-4"
         style={{ pointerEvents: 'auto' }}
       >
         {/* Parchment Backdrop */}

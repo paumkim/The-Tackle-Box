@@ -52,13 +52,16 @@ export const VoyageBar: React.FC = () => {
   const isFinalApproach = progress >= 90;
   const isDocked = progress >= 100;
 
+  // Clamping logic to keep ship inside the visible track (32px icon width approx 3-4%)
+  const shipPosition = Math.max(3, Math.min(97, progress));
+
   return (
     <div className={`w-full h-12 bg-transparent relative overflow-hidden flex items-center select-none z-50 mt-2 transition-all duration-500 ${isDepartureManifestOpen ? 'pointer-events-none' : ''}`}>
       {/* Grid Lines (Longitude) - Faint */}
       <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_98%,rgba(0,0,0,0.05)_99%)] bg-[length:10%_100%]"></div>
 
       {/* Track Line */}
-      <div className="absolute top-1/2 left-0 w-full h-[1px] bg-slate-300"></div>
+      <div className="absolute top-1/2 left-4 right-4 h-[1px] bg-slate-300"></div>
 
       {/* Markers (Islands/Hours) */}
       <div className="absolute left-[25%] top-1/2 -translate-y-1/2 text-slate-300"><div className="w-1.5 h-1.5 rounded-full bg-current"></div></div>
@@ -84,11 +87,11 @@ export const VoyageBar: React.FC = () => {
           {activeProjectId ? <Palmtree className="w-5 h-5" /> : (isDocked ? <Anchor className="w-5 h-5" /> : <Building2 className="w-5 h-5" />)}
       </div>
 
-      {/* The Ship */}
+      {/* The Ship - Snapped to Grid Logic */}
       <motion.div 
         className={`absolute top-1/2 -translate-y-1/2 z-10 ${isFinalApproach ? 'text-blue-800' : 'text-blue-600'}`}
-        initial={{ left: '0%' }}
-        animate={{ left: `${Math.max(2, Math.min(98, progress))}%` }}
+        initial={{ left: '3%' }}
+        animate={{ left: `${shipPosition}%` }}
         transition={{ type: "spring", stiffness: 50, damping: 20 }}
       >
          <div className="relative -ml-4 -mt-4">

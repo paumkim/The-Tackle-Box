@@ -120,11 +120,11 @@ const KnotMeter = () => {
 
     return (
         <div className="flex flex-col items-end">
-            <div className="flex items-center gap-2 font-mono text-xs text-slate-400 select-none" title="Hull Speed">
-                 <ActivityIcon className={`w-3 h-3 ${speed > 13 ? 'text-blue-500 animate-pulse' : 'text-slate-400'}`} />
-                 <span>{isDrifting ? '0.0' : Math.max(0, speed).toFixed(1)} kts</span>
+            <div className="flex items-center gap-2 font-mono text-xs text-slate-500 select-none" title="Hull Speed">
+                 <ActivityIcon className={`w-3 h-3 ${speed > 13 ? 'text-blue-600 animate-pulse' : 'text-slate-400'}`} />
+                 <span className="font-bold">{isDrifting ? '0.0' : Math.max(0, speed).toFixed(1)} kts</span>
             </div>
-            {(isDragDetected || isDrifting) && <span className="text-[9px] text-red-400 font-bold uppercase tracking-wider">{isDrifting ? 'DRIFTING' : 'CARGO LOADING...'}</span>}
+            {(isDragDetected || isDrifting) && <span className="text-[9px] text-red-500 font-bold uppercase tracking-wider">{isDrifting ? 'DRIFTING' : 'CARGO LOADING...'}</span>}
         </div>
     )
 }
@@ -148,6 +148,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const toggleQuietMode = useAppStore(state => state.toggleQuietMode);
   const sosLatchEnabled = useAppStore(state => state.sosLatchEnabled);
   const setConfirmingBreak = useAppStore(state => state.setConfirmingBreak);
+  const setSettingsOpen = useAppStore(state => state.setSettingsOpen);
+  const isSettingsOpen = useAppStore(state => state.isSettingsOpen);
+  
+  const isChatOpen = useAppStore(state => state.isChatOpen);
+  const setChatOpen = useAppStore(state => state.setChatOpen);
+  const isCrewTyping = useAppStore(state => state.isCrewTyping);
   
   const [navItems, setNavItems] = useState<NavItem[]>(DEFAULT_NAV_ITEMS);
   const [draggedItem, setDraggedItem] = useState<NavItem | null>(null);
@@ -289,16 +295,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const handleSetHook = (e: React.MouseEvent) => {
       e.preventDefault();
-      e.stopPropagation(); // Stop propagation if needed
+      e.stopPropagation(); 
       
       if (e.type === 'contextmenu') {
-          // Right click clears hook
+          // Right click releases the hook
           setHookedContactId(null);
       } else {
-          // Left click opens selector or navigates to reef if hook is set
+          // Left click actions
           if (hookedContactId) {
-              onChangeView(ViewState.REEF);
+              // The Fold: Toggle chat view
+              setChatOpen(!isChatOpen);
           } else {
+              // Open Selector
               setShowHookSelector(!showHookSelector);
           }
       }
@@ -378,47 +386,60 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }}
         transition={isResizing ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 30 }}
         className={`
-            flex-shrink-0 bg-[#F8F9FA] border-r border-[#E0E0E0] h-full flex flex-col z-[50] relative group/sidebar 
-            shadow-[4px_0_24px_rgba(0,0,0,0.02)] overflow-hidden transition-filters duration-500
+            flex-shrink-0 bg-[#fdfbf7] border-r border-stone-300 h-full flex flex-col z-[1000] relative group/sidebar 
+            shadow-[4px_0_10px_rgba(0,0,0,0.1)] overflow-visible transition-filters duration-500
             ${isHidden && !isHoverRevealed && !isResizing ? 'pointer-events-none opacity-0' : 'opacity-100'}
             ${isDepartureManifestOpen ? 'pointer-events-none' : ''}
         `}
         onMouseLeave={() => isHidden && setIsHoverRevealed(false)}
       >
+        {/* Paper Texture Overlay */}
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-60 mix-blend-multiply pointer-events-none z-0"></div>
+
         <div 
           onMouseDown={startResizing}
           onDoubleClick={handleDoubleClickHandle}
           className="absolute right-0 top-0 bottom-0 w-[4px] cursor-col-resize hover:bg-blue-400/10 transition-colors z-50 flex items-center justify-center group/handle active:bg-blue-500/20"
           title="Drag to Resize"
         >
-          <div className={`w-[2px] rounded-full transition-all duration-300 ${isResizing ? 'bg-blue-50 h-full shadow-[0_0_15px_#3b82f6]' : 'h-8 bg-slate-300 group-hover/handle:bg-blue-400 group-hover/handle:h-16 group-hover/handle:shadow-[0_0_8px_#3b82f6]'}`} />
+          <div className={`w-[2px] rounded-full transition-all duration-300 ${isResizing ? 'bg-blue-50 h-full shadow-[0_0_15px_#3b82f6]' : 'h-8 bg-stone-300 group-hover/handle:bg-blue-400 group-hover/handle:h-16 group-hover/handle:shadow-[0_0_8px_#3b82f6]'}`} />
         </div>
 
         {/* Header with Vessel Flag */}
-        <div className={`h-20 flex items-center ${renderMini ? 'justify-center px-0' : 'px-6'} border-b border-[#E0E0E0] bg-[#F8F9FA]/30 backdrop-blur-sm sticky top-0 shrink-0 overflow-hidden whitespace-nowrap`}>
+        <div className={`h-20 flex items-center ${renderMini ? 'justify-center px-0' : 'px-6'} border-b border-stone-200 bg-[#fdfbf7]/80 backdrop-blur-sm sticky top-0 shrink-0 whitespace-nowrap z-10`}>
           <div className="bob-on-hover cursor-pointer shrink-0" onClick={() => onChangeView(ViewState.DASHBOARD)}>
-             {renderMini ? <Fish className="w-6 h-6 text-blue-600" /> : <VesselFlag role={userRole} />}
+             {renderMini ? <Fish className="w-6 h-6 text-blue-800" /> : <VesselFlag role={userRole} />}
           </div>
           <motion.div 
             className="overflow-hidden flex flex-col justify-center ml-3"
             initial={false}
             animate={{ opacity: renderMini ? 0 : 1, width: renderMini ? 0 : 'auto' }}
           >
-            <h1 className="font-bold text-slate-800 tracking-tight leading-none mb-1">
+            <h1 className="font-bold text-slate-800 tracking-tight leading-none mb-1 font-serif">
               The Tackle Box
             </h1>
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
                {getRoleLabel(userRole)} Class
             </span>
           </motion.div>
         </div>
         
-        <nav className="p-4 space-y-1 flex-shrink-0 mt-4">
+        <nav className="p-4 space-y-2 flex-shrink-0 mt-4 overflow-x-hidden relative z-10">
           {navItems.map((item, index) => {
             const Icon = IconMap[item.icon] || Fish;
-            const isActive = currentView === item.id;
+            const isActive = currentView === item.id && item.id !== ViewState.SETTINGS;
             const isCargoTarget = item.id === ViewState.INBOX && cargoDragOver;
             
+            // Special case for Settings active state
+            const isSettingsActive = item.id === ViewState.SETTINGS && isSettingsOpen;
+            const effectiveActive = isActive || isSettingsActive;
+
+            // Define styles for active state
+            let activeStyle = 'navigator-glass font-serif font-bold text-slate-800'; // Default active
+            if (item.id === ViewState.SETTINGS && isSettingsOpen) {
+                activeStyle = 'bg-white shadow-[0_0_15px_rgba(59,130,246,0.3)] text-slate-900 border-blue-200 ring-2 ring-blue-50 font-bold'; // High Intensity Focus
+            }
+
             return (
               <div
                 key={item.id}
@@ -427,20 +448,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onDragOver={(e) => item.id === ViewState.INBOX ? handleCargoDragOver(e) : handleDragOver(e, index)}
                 onDragLeave={() => item.id === ViewState.INBOX ? handleCargoDragLeave() : null}
                 onDrop={(e) => item.id === ViewState.INBOX ? handleCargoDrop(e) : handleDrop(e)}
-                className={`relative group/item ${isActive ? 'z-10' : ''}`}
+                className={`relative group/item ${effectiveActive ? 'z-10' : ''}`}
                 onMouseEnter={() => setHoveredItem(item.id)}
                 onMouseLeave={() => setHoveredItem(null)}
               >
                 <button
-                  onClick={() => onChangeView(item.id)}
-                  className={`w-full flex items-center ${renderMini ? 'justify-center px-0' : 'px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out relative bob-on-hover ${
-                    isActive 
-                      ? 'bg-white shadow-sm ring-1 ring-slate-200 text-blue-600' 
-                      : (isCargoTarget ? 'bg-blue-100 ring-2 ring-blue-300 text-blue-800' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900')
+                  onClick={() => {
+                      if (item.id === ViewState.SETTINGS) {
+                          setSettingsOpen(true);
+                      } else {
+                          onChangeView(item.id);
+                      }
+                  }}
+                  className={`w-full flex items-center ${renderMini ? 'justify-center px-0' : 'px-3'} py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ease-in-out relative bob-on-hover ${
+                    effectiveActive 
+                      ? activeStyle
+                      : (isCargoTarget ? 'bg-blue-100 ring-2 ring-blue-300 text-blue-900' : 'text-slate-500 hover:bg-stone-100 hover:text-slate-800 hover:shadow-inner')
                   }`}
                 >
                   <Icon className={`w-4 h-4 shrink-0 ${!renderMini && 'mr-3'} transition-colors ${
-                    isActive ? 'text-blue-600' : (isCargoTarget ? 'text-blue-800 animate-bounce' : 'text-slate-400 group-hover/item:text-slate-600')
+                    effectiveActive ? 'text-current' : (isCargoTarget ? 'text-blue-800 animate-bounce' : 'text-slate-400 group-hover/item:text-slate-600')
                   }`} />
                   
                   {!renderMini && (
@@ -469,42 +496,58 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
           
           {/* Tactical Hook */}
-          <div className={`mt-2 pt-2 border-t border-slate-100 relative ${renderMini ? 'flex justify-center' : ''}`}>
+          <div className={`mt-4 pt-4 border-t border-stone-200 relative ${renderMini ? 'flex justify-center' : ''}`}>
               {showHookSelector && !renderMini && (
-                  <div className="absolute bottom-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-xl z-50 mb-2 max-h-48 overflow-y-auto">
-                      <div className="p-2 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                          <span className="text-[10px] font-bold uppercase text-slate-400">Select Personnel</span>
-                          <button onClick={() => setShowHookSelector(false)}><XIcon className="w-3 h-3 text-slate-400" /></button>
-                      </div>
-                      {contacts?.map(c => (
-                          <div 
-                            key={c.id} 
-                            onClick={() => selectContactForHook(c)}
-                            className="p-2 hover:bg-blue-50 cursor-pointer text-xs font-medium text-slate-700 flex items-center gap-2"
-                          >
-                              <div className={`w-2 h-2 rounded-full ${c.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
-                              {c.name}
+                  <div className="absolute top-0 left-0 w-full transform -translate-y-full pb-2 z-50">
+                      <div className="bg-white border border-stone-200 rounded-lg shadow-xl overflow-hidden">
+                          <div className="p-2 border-b border-stone-100 flex justify-between items-center bg-stone-50">
+                              <span className="text-[10px] font-bold uppercase text-slate-400 font-serif">Crew</span>
+                              <button onClick={() => setShowHookSelector(false)}><XIcon className="w-3 h-3 text-slate-400" /></button>
                           </div>
-                      ))}
+                          <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                              {contacts?.map(c => (
+                                  <div 
+                                    key={c.id} 
+                                    onClick={() => selectContactForHook(c)}
+                                    className="p-2 hover:bg-blue-50 cursor-pointer text-xs font-medium text-slate-700 flex items-center gap-2 border-b border-stone-50 last:border-0"
+                                  >
+                                      <div className={`w-2 h-2 rounded-full ${c.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                                      {c.name}
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
                   </div>
               )}
 
               <button
                 onClick={handleSetHook}
                 onContextMenu={handleSetHook}
-                className={`flex items-center ${renderMini ? 'justify-center w-full px-0' : 'px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out relative bob-on-hover text-slate-500 hover:bg-slate-50 hover:text-slate-900 group/hook`}
-                title={hookedContact ? "View Pinned Contact (Right-Click to Unhook)" : "Set Tactical Hook"}
+                className={`flex items-center ${renderMini ? 'justify-center w-full px-0' : 'px-3'} py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ease-in-out relative bob-on-hover text-slate-500 hover:bg-stone-50 hover:text-slate-900 group/hook border border-transparent hover:border-stone-200`}
+                title={hookedContact ? "Left-Click: Fold/Unfold Chat | Right-Click: Release Hook" : "Set Tactical Hook"}
               >
-                  <Anchor className={`w-4 h-4 shrink-0 ${!renderMini && 'mr-3'} ${hookedContact ? 'text-amber-500' : 'text-slate-400'}`} />
+                  <Anchor className={`w-4 h-4 shrink-0 ${!renderMini && 'mr-3'} ${hookedContact ? 'text-amber-600' : 'text-slate-400'}`} />
                   {!renderMini && (
                       <span className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-between">
                           <div className="flex flex-col">
-                              <span className="leading-none">{hookedContact ? hookedContact.name : 'Set Hook...'}</span>
-                              {hookedContact && <span className="text-[9px] text-slate-400 font-mono mt-0.5">{hookedContact.reliability || 0}% RELIABILITY</span>}
+                              {hookedContact ? (
+                                  <span 
+                                    className={`leading-none font-serif transition-all duration-500 ${isCrewTyping ? 'text-emerald-600 drop-shadow-[0_0_5px_rgba(74,222,128,0.8)]' : 'text-slate-800'}`}
+                                  >
+                                      {hookedContact.name}
+                                  </span>
+                              ) : (
+                                  <span className="leading-none font-serif">Set Hook...</span>
+                              )}
+                              {hookedContact && (
+                                  <span className="text-[9px] text-slate-400 font-mono mt-0.5 flex items-center gap-1">
+                                      {isCrewTyping ? 'TYPING...' : (isChatOpen ? 'CHANNEL OPEN' : 'STANDING BY')}
+                                  </span>
+                              )}
                           </div>
                           {hookedContact && (
                               <span className="flex items-center gap-1">
-                                  {hookedContact.signalResponse === 'AYE' && <Check className="w-3 h-3 text-emerald-500" />}
+                                  {hookedContact.signalResponse === 'AYE' && <Check className="w-3 h-3 text-emerald-600" />}
                                   {hookedContact.signalResponse === 'NAY' && <XIcon className="w-3 h-3 text-red-500" />}
                                   {hookedContact.signalResponse === 'PENDING' && <HelpCircle className="w-3 h-3 text-amber-500 animate-pulse" />}
                               </span>
@@ -518,7 +561,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Clean Deck Policy: No TacklePanel or WaterBarrel rendered here anymore */}
         <div className="flex-1"></div>
 
-        <div className="mt-auto shrink-0">
+        <div className="mt-auto shrink-0 relative z-10">
           {!renderMini && (
             <div className="px-4 pb-4">
                {/* SOS Beacon (Hold to Confirm) */}
@@ -532,7 +575,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                      className={`flex-1 relative overflow-hidden flex items-center justify-center gap-2 px-3 py-2 rounded-lg border-2 transition-all shadow-sm group select-none ${
                        sosActive || isSevereWeather
                          ? 'bg-red-50 border-red-400 text-red-700 shadow-red-200 animate-pulse' 
-                         : 'bg-[#fdfbf7] border-red-100 text-red-500 hover:border-red-300 hover:text-red-700'
+                         : 'bg-[#fdfbf7] border-red-100 text-red-600 hover:border-red-300 hover:text-red-700'
                      } ${isHolding ? 'scale-95' : ''}`}
                      title={sosLatchEnabled ? "Hold for 3s to Activate Beacon" : "Emergency Beacon"}
                    >
@@ -564,7 +607,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                    </button>
                </div>
 
-               <div className="border-t border-slate-100/50 pt-4 flex gap-2">
+               <div className="border-t border-slate-200/50 pt-4 flex gap-2">
                  <button 
                    onClick={() => setIsDepthsOpen(true)}
                    className="flex-1 flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-red-500 hover:bg-red-50/50 rounded-lg transition-colors cursor-pointer border-2 border-transparent hover:border-dashed hover:border-red-200"
@@ -583,7 +626,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
           
-          <div className={`p-4 border-t border-[#E0E0E0] bg-[#F8F9FA]/30 ${renderMini ? 'flex justify-center flex-col gap-2 items-center' : ''}`}>
+          <div className={`p-4 border-t border-stone-200 bg-[#fdfbf7]/50 ${renderMini ? 'flex justify-center flex-col gap-2 items-center' : ''}`}>
             {renderMini && (
                 <>
                     <button 
@@ -632,7 +675,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="flex items-center justify-end w-full">
                         <KnotMeter />
                     </div>
-                    <div className="w-full border-t border-slate-100 my-1"></div>
+                    <div className="w-full border-t border-slate-200 my-1"></div>
                     <button 
                       onClick={onToggleDevOverlay}
                       className={`flex items-center gap-1 transition-colors shrink-0 text-xs ${isDevOverlayActive ? 'text-red-500 font-bold' : 'text-slate-400 hover:text-slate-600'}`}

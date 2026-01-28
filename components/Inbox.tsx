@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Mail, MessageSquare, Phone, CheckSquare, FileText, Trash2, ArrowRight, Anchor, Filter, Fish, AlertOctagon, UploadCloud, Package, BarChart3, Image as ImageIcon, Box, Music, Video, ArrowUpRight } from 'lucide-react';
-import { LogEntry, TaskPriority, EffortLevel, Asset } from '../types';
+import { Mail, MessageSquare, Phone, CheckSquare, FileText, Trash2, ArrowRight, Anchor, Filter, Fish, AlertOctagon, UploadCloud, Package, BarChart3, Image as ImageIcon, Box, Music, Video, ArrowUpRight, Radar, Archive } from 'lucide-react';
+import { LogEntry, TaskPriority, EffortLevel, Asset, Note } from '../types';
 import { db } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,7 +19,20 @@ const INITIAL_MOCK_LOGS: LogEntry[] = [
 
 export const Inbox: React.FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>(INITIAL_MOCK_LOGS);
-  const liveWellAssets = useLiveQuery(() => db.assets.where('location').equals('live_well').reverse().sortBy('createdAt'));
+  
+  // Queries for Fresh Catch (Notes & Assets marked isFresh)
+  const freshNotes = useLiveQuery(() => db.notes.filter(n => !!n.isFresh).toArray()) || [];
+  const freshAssets = useLiveQuery(() => db.assets.filter(a => !!a.isFresh).toArray()) || [];
+  
+  // Standard Live Well assets (excluding fresh ones to avoid duplication if we want separation, or include all?)
+  // Let's show non-fresh live well items in the main list
+  const liveWellAssets = useLiveQuery(() => 
+    db.assets
+      .where('location').equals('live_well')
+      .filter(a => !a.isFresh)
+      .reverse()
+      .sortBy('createdAt')
+  );
   
   const [meshSize, setMeshSize] = useState<'FINE' | 'COARSE'>('FINE'); // Fine = All, Coarse = Only Tuna
   const [bycatchCount, setBycatchCount] = useState(0);
@@ -30,11 +43,11 @@ export const Inbox: React.FC = () => {
     // Recalculate stats including assets
     const logBycatch = logs.filter(l => l.type === 'bycatch').length;
     const logTuna = logs.filter(l => l.type === 'tuna').length;
-    const assetCount = liveWellAssets ? liveWellAssets.length : 0;
+    const assetCount = (liveWellAssets ? liveWellAssets.length : 0) + freshNotes.length + freshAssets.length;
     
     setBycatchCount(logBycatch);
     setTunaCount(logTuna + assetCount);
-  }, [logs, liveWellAssets]);
+  }, [logs, liveWellAssets, freshNotes, freshAssets]);
 
   const handleHook = async (log: LogEntry) => {
     // Convert to Task
@@ -72,11 +85,10 @@ export const Inbox: React.FC = () => {
   };
 
   const handleArchiveAsset = async (id: number) => {
-      await db.assets.update(id, { deletedAt: Date.now(), location: 'aquarium' }); // Move out of live well
+      await db.assets.update(id, { deletedAt: Date.now(), location: 'aquarium', isFresh: false }); 
   }
 
   const handleInspectAsset = (asset: Asset) => {
-      // Just download for now as "inspection"
       const url = URL.createObjectURL(asset.data);
       const a = document.createElement('a');
       a.href = url;
@@ -86,6 +98,47 @@ export const Inbox: React.FC = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
   }
+
+  // --- Fresh Catch Actions ---
+
+  const mountNoteToDeck = async (note: Note) => {
+      if (!note.id) return;
+      await db.tasks.add({
+          title: note.title,
+          isCompleted: false,
+          priority: TaskPriority.REGULAR,
+          effort: EffortLevel.MEDIUM,
+          createdAt: Date.now(),
+          filePath: note.title // Link back
+      });
+      // Mark as processed (not fresh)
+      await db.notes.update(note.id, { isFresh: false });
+  };
+
+  const archiveNoteToVault = async (note: Note) => {
+      if (!note.id) return;
+      await db.notes.update(note.id, { isFresh: false });
+  };
+
+  const mountAssetToDeck = async (asset: Asset) => {
+      if (!asset.id) return;
+      await db.tasks.add({
+          title: `Review Catch: ${asset.name}`,
+          isCompleted: false,
+          priority: TaskPriority.REGULAR,
+          effort: EffortLevel.LOW,
+          createdAt: Date.now(),
+          filePath: asset.name
+      });
+      await db.assets.update(asset.id, { isFresh: false });
+  };
+
+  const archiveAssetToVault = async (asset: Asset) => {
+      if (!asset.id) return;
+      await db.assets.update(asset.id, { isFresh: false });
+  };
+
+  // --- Drag & Drop ---
 
   const handleDragOver = (e: React.DragEvent) => {
       e.preventDefault();
@@ -100,7 +153,7 @@ export const Inbox: React.FC = () => {
       e.preventDefault();
       setIsDragging(false);
       
-      const files: File[] = Array.from(e.dataTransfer.files);
+      const files = Array.from(e.dataTransfer.files) as File[];
       if (files.length > 0) {
           for (const file of files) {
               await db.assets.add({
@@ -110,7 +163,8 @@ export const Inbox: React.FC = () => {
                   data: file,
                   createdAt: Date.now(),
                   location: 'live_well',
-                  species: file.type.startsWith('image') ? 'Scales' : 'Shells'
+                  species: file.type.startsWith('image') ? 'Scales' : 'Shells',
+                  isFresh: true // Mark as fresh catch
               });
           }
           NotificationManager.send("Cargo Secured", `${files.length} items stowed in The Trawl.`);
@@ -130,12 +184,12 @@ export const Inbox: React.FC = () => {
 
   return (
     <div 
-        className="max-w-4xl mx-auto h-full flex flex-col relative"
+        className="w-full h-full flex flex-col relative"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
     >
-      <header className="mb-4 z-10 relative flex flex-col gap-4 border-b border-slate-200 pb-4">
+      <header className="mb-4 z-10 relative flex flex-col gap-4 border-b border-slate-200 pb-4 px-6 pt-6">
         <div className="flex justify-between items-end">
             <div>
             <h2 className="text-2xl font-bold text-slate-800 font-serif">The Trawl</h2>
@@ -182,6 +236,7 @@ export const Inbox: React.FC = () => {
         </div>
       </header>
 
+      <div className="flex-1 overflow-y-auto px-6 pb-6 custom-scrollbar">
       {/* Supply Drop Zone */}
       <AnimatePresence>
           <motion.div 
@@ -202,8 +257,101 @@ export const Inbox: React.FC = () => {
           </motion.div>
       </AnimatePresence>
 
-      {(logs.length === 0 && (!liveWellAssets || liveWellAssets.length === 0)) ? (
-        <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden">
+      {/* Fresh Catch Section (Automatic Review) */}
+      {(freshNotes.length > 0 || freshAssets.length > 0) && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+              <div className="flex items-center gap-2 mb-3 px-2">
+                  <div className="relative">
+                      <Radar className="w-5 h-5 text-blue-500 animate-spin-slow" />
+                      <div className="absolute inset-0 bg-blue-400 blur-md opacity-40 animate-pulse"></div>
+                  </div>
+                  <h3 className="font-serif font-bold text-slate-800 text-sm uppercase tracking-widest">Fresh Catch</h3>
+                  <span className="text-[9px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">{freshNotes.length + freshAssets.length} Unprocessed</span>
+              </div>
+
+              <div className="space-y-3">
+                  {freshNotes.map(note => (
+                      <div key={note.id} className="bg-blue-50/50 border border-blue-200 rounded-xl p-4 flex items-center justify-between shadow-sm relative overflow-hidden group">
+                          {/* Sonar Glow Border */}
+                          <div className="absolute inset-0 border-2 border-blue-400/20 rounded-xl animate-pulse pointer-events-none"></div>
+                          
+                          <div className="flex items-center gap-4 z-10">
+                              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-blue-500 shadow-sm border border-blue-100">
+                                  <FileText className="w-5 h-5" />
+                              </div>
+                              <div>
+                                  <h4 className="font-bold text-slate-700 text-sm">{note.title}</h4>
+                                  <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono mt-1">
+                                      <span>Caught {new Date(note.updatedAt).toLocaleTimeString()}</span>
+                                      <span>|</span>
+                                      <span>Filed to {note.folder}</span>
+                                  </div>
+                              </div>
+                          </div>
+
+                          <div className="flex gap-2 z-10">
+                              <button 
+                                onClick={() => mountNoteToDeck(note)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-blue-200 rounded-full text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition-all shadow-sm"
+                              >
+                                  <CheckSquare className="w-3 h-3" /> Mount to Deck
+                              </button>
+                              <button 
+                                onClick={() => archiveNoteToVault(note)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-stone-200 rounded-full text-[10px] font-bold uppercase tracking-wider text-stone-500 hover:bg-stone-50 hover:border-stone-300 transition-all shadow-sm"
+                              >
+                                  <Archive className="w-3 h-3" /> Archive
+                              </button>
+                          </div>
+                      </div>
+                  ))}
+
+                  {freshAssets.map(asset => (
+                      <div key={asset.id} className="bg-blue-50/50 border border-blue-200 rounded-xl p-4 flex items-center justify-between shadow-sm relative overflow-hidden group">
+                          <div className="absolute inset-0 border-2 border-blue-400/20 rounded-xl animate-pulse pointer-events-none"></div>
+                          
+                          <div className="flex items-center gap-4 z-10">
+                              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-blue-500 shadow-sm border border-blue-100">
+                                  {getFileIcon(asset.type)}
+                              </div>
+                              <div>
+                                  <h4 className="font-bold text-slate-700 text-sm truncate max-w-[200px]">{asset.name}</h4>
+                                  <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono mt-1">
+                                      <span>Caught {new Date(asset.createdAt).toLocaleTimeString()}</span>
+                                      <span>|</span>
+                                      <span>{(asset.size / 1024).toFixed(1)} KB</span>
+                                  </div>
+                              </div>
+                          </div>
+
+                          <div className="flex gap-2 z-10">
+                              <button 
+                                onClick={() => mountAssetToDeck(asset)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-blue-200 rounded-full text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition-all shadow-sm"
+                              >
+                                  <CheckSquare className="w-3 h-3" /> Mount to Deck
+                              </button>
+                              <button 
+                                onClick={() => archiveAssetToVault(asset)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-stone-200 rounded-full text-[10px] font-bold uppercase tracking-wider text-stone-500 hover:bg-stone-50 hover:border-stone-300 transition-all shadow-sm"
+                              >
+                                  <Archive className="w-3 h-3" /> Archive
+                              </button>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+              
+              <div className="my-6 border-t border-slate-200"></div>
+          </motion.div>
+      )}
+
+      {(logs.length === 0 && (!liveWellAssets || liveWellAssets.length === 0) && freshNotes.length === 0 && freshAssets.length === 0) ? (
+        <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden h-64">
            
            {/* Empty Net Visual */}
            <div className="relative w-32 h-32 flex items-center justify-center mb-8 z-10 opacity-20">
@@ -216,18 +364,18 @@ export const Inbox: React.FC = () => {
            
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto z-10 relative space-y-3 pr-2 custom-scrollbar">
+        <div className="space-y-3">
           <AnimatePresence>
-            {/* Live Assets (Supply Drop) */}
+            {/* Live Assets (Supply Drop - older, not fresh) */}
             {liveWellAssets?.map((asset) => (
                 <motion.div 
                     key={`asset-${asset.id}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.9 }}
-                    className="group relative flex items-center p-4 rounded-xl border border-blue-200 bg-blue-50/30 transition-all cursor-pointer shadow-sm hover:shadow-md hover:border-blue-300"
+                    className="group relative flex items-center p-4 rounded-xl border border-stone-200 bg-white hover:border-blue-300 transition-all cursor-pointer shadow-sm hover:shadow-md"
                 >
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center mr-4 shrink-0 shadow-sm border bg-white border-blue-100 text-blue-500">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center mr-4 shrink-0 shadow-sm border bg-slate-50 border-slate-200 text-slate-500">
                         {getFileIcon(asset.type)}
                     </div>
                     <div className="flex-1 min-w-0 pr-32">
@@ -324,6 +472,7 @@ export const Inbox: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

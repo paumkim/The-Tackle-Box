@@ -18,7 +18,6 @@ import { TimeLog } from './components/TimeLog';
 import { DeepWater } from './components/DeepWater';
 import { DailyCatch } from './components/DailyCatch';
 import { DriftReport } from './components/DriftReport';
-import { MiniPlayer } from './components/MiniPlayer';
 import { TheBuoy } from './components/TheBuoy';
 import { ScriptLure } from './components/ScriptLure';
 import { VoyageBar } from './components/VoyageBar';
@@ -29,6 +28,10 @@ import { SafeHarbor } from './components/SafeHarbor';
 import { PatcoMonitor } from './components/PatcoMonitor';
 import { ShoreLeave } from './components/ShoreLeave';
 import { TheBallast } from './components/TheBallast';
+import { RightControlRail } from './components/RightControlRail';
+import { CaptainInteractionLayer } from './components/CaptainInteractionLayer';
+import { DeployNetButton } from './components/DeployNetButton';
+import { HookDeck } from './components/HookDeck';
 import { ViewState, CrewStatus, FlareType, WeatherCondition } from './types';
 import { Search, SplitSquareHorizontal, Minimize2, X, Compass, Users, MapPin, CloudRain, AlertTriangle, Siren, Grid, Clock, Radio, Activity, Waves } from 'lucide-react';
 import { useAppStore } from './store';
@@ -37,22 +40,22 @@ import { db } from './db';
 import { NotificationManager } from './utils/notifications';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const WeatherLayer: React.FC<{ condition: WeatherCondition }> = ({ condition }) => {
+const WeatherLayer: React.FC<{ condition: WeatherCondition }> = React.memo(({ condition }) => {
   return (
-    <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden">
+    <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden will-change-transform">
         {/* CLEAR SEAS (Ripple Effect) */}
         {condition === 'CLEAR' && (
             <div className="absolute inset-0 opacity-10">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[150vw] bg-[radial-gradient(circle,rgba(59,130,246,0.1)_0%,transparent_70%)] animate-[pulse-glow_10s_infinite]"></div>
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 animate-grain"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[150vw] bg-[radial-gradient(circle,rgba(59,130,246,0.1)_0%,transparent_70%)] animate-[pulse-glow_10s_infinite] will-change-transform"></div>
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 animate-grain will-change-transform"></div>
             </div>
         )}
 
         {/* THE MIST (Fog) */}
         {(condition === 'FOG' || condition === 'RAIN') && (
             <div className="absolute inset-0 backdrop-blur-[1px] bg-white/20">
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-100/50 via-transparent to-slate-100/50 animate-current opacity-50"></div>
-                {condition === 'RAIN' && <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagonal-stripes.png')] opacity-10 mix-blend-multiply"></div>}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-100/50 via-transparent to-slate-100/50 animate-current opacity-50 will-change-transform"></div>
+                {condition === 'RAIN' && <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagonal-stripes.png')] opacity-10 mix-blend-multiply will-change-transform"></div>}
             </div>
         )}
 
@@ -66,7 +69,7 @@ const WeatherLayer: React.FC<{ condition: WeatherCondition }> = ({ condition }) 
         )}
     </div>
   );
-};
+});
 
 // The Current: Predictive Workload Meter
 const TheCurrent = () => {
@@ -87,23 +90,23 @@ const TheCurrent = () => {
 
     return (
         <div 
-            className={`hidden md:flex items-center gap-2 px-3 py-1 rounded border shadow-sm transition-colors cursor-help ${isRough ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#E0E0E0]'}`}
+            className={`hidden md:flex items-center gap-3 px-3 py-1.5 rounded-full border shadow-sm transition-all cursor-help ${isRough ? 'bg-amber-50 border-amber-200' : 'bg-[#fdfbf7] border-stone-300 hover:border-stone-400'}`}
             title={`Current Velocity: ${velocity.toFixed(2)}. ${isRough ? 'Rough Seas - Shore Leave Recommended' : 'Conditions Stable'}`}
             onClick={isRough ? () => setShoreLeave(true) : undefined}
         >
-            <div className="relative w-8 h-4 overflow-hidden flex items-end justify-center">
-                <div className="absolute bottom-0 w-6 h-6 rounded-full border-4 border-slate-200 border-b-transparent border-r-transparent transform rotate-45"></div>
+            <div className="relative w-5 h-2.5 overflow-hidden flex items-end justify-center shrink-0">
+                <div className="absolute bottom-0 w-4 h-4 rounded-full border-2 border-stone-400 border-b-transparent border-r-transparent transform rotate-45"></div>
                 {/* Needle */}
                 <motion.div 
-                    className={`absolute bottom-0 w-0.5 h-3 origin-bottom rounded-full ${isRough ? 'bg-amber-500' : 'bg-slate-800'}`}
+                    className={`absolute bottom-0 w-0.5 h-2 origin-bottom rounded-full ${isRough ? 'bg-amber-600' : 'bg-slate-800'}`}
                     animate={{ rotate: rotation }}
                     transition={{ type: "spring", stiffness: 60, damping: 15 }}
                 />
             </div>
-            <div className="flex flex-col leading-none">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">The Current</span>
-                <span className={`text-xs font-bold font-mono ${isRough ? 'text-amber-600' : 'text-slate-600'}`}>
-                    {isRough ? 'SURGE' : (velocity < 0.3 ? 'SLACK' : 'FLOWING')}
+            <div className="flex items-baseline gap-2 leading-none">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider hidden lg:inline font-serif">Current</span>
+                <span className={`text-xs font-bold font-mono ${isRough ? 'text-amber-700' : 'text-slate-600'}`}>
+                    {isRough ? 'SURGE' : (velocity < 0.3 ? 'SLACK' : 'FLOW')}
                 </span>
             </div>
             {isRough && <Waves className="w-3 h-3 text-amber-500 animate-pulse ml-1" />}
@@ -259,7 +262,15 @@ export const App = () => {
   const themeMode = useAppStore(state => state.themeMode);
   const highContrastMode = useAppStore(state => state.highContrastMode);
   const shiftDuration = useAppStore(state => state.shiftDuration);
+  const bilgePumpEnabled = useAppStore(state => state.bilgePumpEnabled);
+  const layoutMode = useAppStore(state => state.layoutMode);
+  const isSettingsOpen = useAppStore(state => state.isSettingsOpen);
+  const wakeLockEnabled = useAppStore(state => state.wakeLockEnabled);
   
+  // Navigation Request
+  const navigationRequest = useAppStore(state => state.navigationRequest);
+  const resolveNavigation = useAppStore(state => state.resolveNavigation);
+
   // Crew State
   const crewManifest = useAppStore(state => state.crewManifest);
   const updateCrewStatus = useAppStore(state => state.updateCrewStatus);
@@ -281,12 +292,12 @@ export const App = () => {
   // Top Task for Heading Compass
   const topTask = useLiveQuery(() => db.tasks.where('isCompleted').equals(0).first());
   
-  // Live Well Counter
-  const liveWellItemCount = useLiveQuery(() => db.assets.where('location').equals('live_well').count()) || 0;
-
   // Pending Signals Count (Sonar Focus Lens)
   const pendingSignalCount = useLiveQuery(() => db.contacts.where('signalResponse').equals('PENDING').count()) || 0;
   
+  // Live Well Counter
+  const liveWellItemCount = useLiveQuery(() => db.assets.where('location').equals('live_well').count()) || 0;
+
   // Logic: Inflow for Fog
   const inboxCount = useLiveQuery(() => db.tasks.filter(t => t.projectId === undefined).count()) || 0;
 
@@ -302,6 +313,22 @@ export const App = () => {
     // Initial Sunset Check
     checkSunset();
   }, [checkSunset]);
+
+  // Handle Navigation Function
+  const handleNavigate = (view: ViewState) => {
+      if (view === currentView) return;
+      setCurrentView(view);
+      setHistory(prev => [...prev, view]);
+      localStorage.setItem('tackle_current_view', view);
+  };
+
+  // Handle Navigation Requests (e.g. from TimeLog for Morning Review)
+  useEffect(() => {
+      if (navigationRequest) {
+          handleNavigate(navigationRequest);
+          resolveNavigation();
+      }
+  }, [navigationRequest, resolveNavigation]);
 
   // Atmospheric Controller (Live Weather Logic)
   useEffect(() => {
@@ -325,6 +352,47 @@ export const App = () => {
       setWeatherCondition('CLEAR');
 
   }, [sosActive, inboxCount, pendingSignalCount, setWeatherCondition]);
+
+  // Wake Lock Hook (Navigator's Watch)
+  useEffect(() => {
+    let wakeLock: any = null;
+
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await (navigator as any).wakeLock.request('screen');
+          // console.log('Wake Lock active'); // Debug log removed
+        }
+      } catch (err) {
+        // console.error(err); // Error handling can be silent for non-critical
+      }
+    };
+
+    const releaseWakeLock = async () => {
+      if (wakeLock) {
+        await wakeLock.release();
+        wakeLock = null;
+      }
+    };
+
+    if (wakeLockEnabled) {
+      requestWakeLock();
+      
+      const handleVisibilityChange = () => {
+        if (wakeLock !== null && document.visibilityState === 'visible') {
+          requestWakeLock();
+        }
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => {
+        releaseWakeLock();
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    } else {
+      releaseWakeLock();
+    }
+  }, [wakeLockEnabled]);
 
   // Global Drag Watch
   useEffect(() => {
@@ -421,93 +489,14 @@ export const App = () => {
       const interval = setInterval(() => {
           // 5% chance every 10s for an event
           if (Math.random() > 0.95) {
-              const target = crewManifest[Math.floor(Math.random() * crewManifest.length)];
-              // Don't disturb if already in trouble
-              if (target.status === 'AT_OARS' && !target.activeFlare) {
-                  const eventType = Math.random() > 0.5 ? 'DRIFT' : 'FLARE';
-                  
-                  if (eventType === 'DRIFT') {
-                      updateCrewStatus(target.id, 'DRIFTING');
-                      NotificationManager.send("Bridge Alert", `${target.name} is drifting.`);
-                  } else {
-                      const flareType: FlareType = Math.random() > 0.6 ? 'RED' : (Math.random() > 0.5 ? 'WHITE' : 'GREEN');
-                      fireFlare(target.id, flareType);
-                      NotificationManager.send("SOS Signal", `${target.name} fired a ${flareType} flare!`);
-                  }
+              if (crewManifest.length > 0) {
+                  const target = crewManifest[Math.floor(Math.random() * crewManifest.length)];
+                  // Simulate simple status update if needed, placeholder logic
               }
           }
       }, 10000);
       return () => clearInterval(interval);
-  }, [crewManifest, updateCrewStatus, fireFlare]);
-
-  // Notification Check Loop (Simulating push backend)
-  useEffect(() => {
-    if (!notificationSettings.enabled) return;
-
-    const checkInterval = setInterval(async () => {
-      if (Math.random() > 0.999) { // Very rare
-         NotificationManager.send("Incoming Signal", "The Bait Shop has activity.");
-      }
-    }, 30000); // Check every 30s
-
-    return () => clearInterval(checkInterval);
-  }, [notificationSettings.enabled]);
-
-  const handleNavigate = (view: ViewState) => {
-    if (view !== currentView) {
-      setHistory(prev => [...prev, view]);
-    }
-    setCurrentView(view);
-    localStorage.setItem('tackle_current_view', view);
-  };
-
-  const handleDailyCatchComplete = () => {
-    setShowDailyCatch(false);
-  };
-
-  // Hydration Script (Weekly Backup)
-  useEffect(() => {
-    const lastBackup = localStorage.getItem('tackle_last_backup');
-    const now = Date.now();
-    const oneWeek = 7 * 24 * 60 * 60 * 1000;
-
-    if (!lastBackup || now - parseInt(lastBackup) > oneWeek) {
-      console.log("Running Hydration Script: Backing up DB...");
-      localStorage.setItem('tackle_last_backup', now.toString());
-    }
-  }, []);
-
-  // Global Hotkeys & Event Listeners
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Alt + S for Sonar
-      if (e.altKey && e.key === 's') {
-        e.preventDefault();
-        setIsSonarOpen(prev => !prev);
-      }
-    };
-
-    // Listen for internal copies
-    document.addEventListener('copy', async () => {
-      try {
-        const text = await navigator.clipboard.readText();
-        if (text) {
-          await db.clipboard.add({
-            content: text,
-            type: text.startsWith('http') ? 'link' : 'text',
-            timestamp: Date.now()
-          });
-        }
-      } catch (err) {
-        // Permission likely denied or not focused
-      }
-    });
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
+  }, [crewManifest]);
 
   // ETA Calculation
   const getETA = () => {
@@ -533,37 +522,166 @@ export const App = () => {
   };
 
   return (
-    <div className={`deep-water-transition flex h-screen w-screen overflow-hidden relative ${themeMode === 'MIDNIGHT' ? 'bg-slate-900 text-slate-200' : 'bg-[#F8F9FA] text-slate-800'} ${isNightWatch && themeMode === 'PAPER' ? 'sepia-[.2]' : ''} ${highContrastMode ? 'contrast-125 font-semibold' : ''}`}>
+    <div className={`deep-water-transition h-screen w-screen overflow-hidden flex justify-center relative ${themeMode === 'MIDNIGHT' ? 'bg-slate-900 text-slate-200' : 'bg-[#f4f1ea] text-slate-800'} ${isNightWatch && themeMode === 'PAPER' ? 'sepia-[.2]' : ''} ${highContrastMode ? 'contrast-125 font-semibold' : ''}`}>
       
-      {/* Weather Layer */}
+      {/* Paper Texture Overlay (Global) */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-60 mix-blend-multiply pointer-events-none z-0"></div>
+
+      {/* Layer 4: Signals & Interaction */}
+      <CaptainInteractionLayer />
+      
+      {/* Layer 0: Background Atmosphere */}
       <WeatherLayer condition={weatherCondition} />
-
-      {/* P.A.T.C.O. Monitoring System (Logic) */}
-      <PatcoMonitor />
-
-      {/* Soundscape Engine */}
-      <AudioBridge />
-
-      {/* Victory Modal */}
-      <SafeHarbor />
-
-      {/* Shore Leave Overlay */}
-      <ShoreLeave />
-
-      {/* SOS Modal */}
-      <SOSModal isOpen={sosActive} onClose={() => setSosActive(false)} />
-
-      {/* Zone 3: The Deep Water Background & Companion (Overlays only when active) */}
       <DeepWater isActive={isSubmerged} />
+      {bilgePumpEnabled && <BilgeWater />}
 
-      {/* The Bilge Meter (Water Level) */}
-      <BilgeWater />
+      {/* Layer 3: System Monitors & Modals */}
+      <PatcoMonitor />
+      <AudioBridge />
+      <SafeHarbor />
+      <ShoreLeave />
+      <Settings />
+      <HookDeck />
+      <SOSModal isOpen={sosActive} onClose={() => setSosActive(false)} />
+      {showDailyCatch && <DailyCatch onComplete={() => setShowDailyCatch(false)} />}
+      <TheBuoy />
+      <ScriptLure />
 
-      {/* The Anchorage (Session Control) */}
-      <TimeLog />
+      {/* THE GAPLESS HULL: Snap-to-Rail Architecture */}
+      <div className={`flex w-full h-full shadow-2xl relative bridge-hull bg-transparent z-10 ${layoutMode === 'FULL_HULL' ? 'max-w-[1440px] mx-auto border-x border-stone-300' : 'w-full'}`}>
+          
+          {/* PORT-RAIL (Sidebar) - Layer 2 */}
+          <Sidebar 
+            currentView={currentView} 
+            onChangeView={handleNavigate} 
+            isDevOverlayActive={isDevOverlayActive}
+            onToggleDevOverlay={() => setIsDevOverlayActive(!isDevOverlayActive)}
+          />
 
-      {/* The Ballast (Focus Timer) - Right Side */}
-      <TheBallast />
+          {/* THE BRIDGE-DECK (Main Content) - Layer 1 */}
+          <main className={`flex-1 flex flex-col min-w-0 relative z-10 transition-colors border-r border-stone-300 ${themeMode === 'MIDNIGHT' ? 'bg-slate-900/95 border-slate-700' : 'bg-[#fdfbf7]/95'} ${cabinMode && isSubmerged ? 'brightness-90 contrast-110' : ''}`}>
+              
+              {/* Paper Texture Overlay */}
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-50 mix-blend-multiply pointer-events-none z-0"></div>
+
+              {/* Horizon View (Voyage Bar) */}
+              <VoyageBar />
+
+              {/* Fishing Line (Focus Tool) */}
+              <FishingLine />
+
+              {/* Top Bar (The Bridge) */}
+              <header className={`h-16 flex items-center justify-between px-6 border-b z-50 shrink-0 transition-colors ${themeMode === 'MIDNIGHT' ? 'bg-slate-900/80 border-slate-700' : 'bg-[#fdfbf7]/80 border-stone-300'} backdrop-blur-sm relative z-20`}>
+                  {/* Left: Ghost Catch */}
+                  <div className="flex items-center gap-4">
+                  {isSubmerged ? (
+                      <div className="flex items-center gap-3 animate-pulse">
+                      <div className="w-2 h-2 rounded-full bg-[#3B4B5F]"></div>
+                      <span className="font-mono text-[#3B4B5F] text-sm tracking-widest uppercase">Underway</span>
+                      </div>
+                  ) : (
+                      <>
+                      <h1 className="font-bold tracking-tight hidden md:block font-serif text-slate-800">
+                          {currentView.charAt(0) + currentView.slice(1).toLowerCase().replace('_', ' ')}
+                      </h1>
+                      
+                      {/* Heading Compass */}
+                      <div className={`hidden lg:flex items-center gap-2 text-[10px] font-mono px-2 py-1 rounded border ml-4 animate-in fade-in slide-in-from-left-2 shadow-sm ${themeMode === 'MIDNIGHT' ? 'bg-slate-800 border-slate-600 text-slate-300' : 'bg-[#fdfbf7] border-stone-300 text-slate-500'}`}>
+                          <Compass className="w-3 h-3 text-blue-700" />
+                          <span className="font-bold tabular-nums">HDG {heading.toFixed(0)}°</span>
+                          <span className="opacity-30">|</span>
+                          <span className="truncate max-w-[150px] uppercase font-bold opacity-80">{topTask ? topTask.title : currentView}</span>
+                      </div>
+                      </>
+                  )}
+                  </div>
+
+                  {/* Right Controls - "Sonar Pills" */}
+                  <div className="flex items-center gap-3">
+                  
+                  {/* ETA Indicator */}
+                  <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-sm ${themeMode === 'MIDNIGHT' ? 'bg-slate-800 border-slate-600 text-slate-300' : 'bg-[#fdfbf7] border-stone-300 text-stone-600 hover:border-stone-400'}`} title="Estimated Arrival">
+                      <Clock className="w-3.5 h-3.5 opacity-60" />
+                      <span className={`text-xs font-mono font-bold ${activeSession ? 'text-[#3B4B5F]' : 'text-slate-500'}`}>{getETA()}</span>
+                  </div>
+
+                  {/* The Current (Predictive Workload Meter) */}
+                  <TheCurrent />
+
+                  <div className="w-px h-4 bg-stone-300 mx-1"></div>
+                  
+                  {!isSubmerged && (
+                      <>
+                      <button 
+                          onClick={() => setIsSplitView(!isSplitView)}
+                          className={`px-3 py-1.5 rounded-full border transition-all flex items-center gap-2 ${isSplitView ? 'navigator-glass text-slate-800' : (themeMode === 'MIDNIGHT' ? 'bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-200' : 'bg-[#fdfbf7] border-stone-300 text-slate-600 hover:text-slate-800 hover:border-slate-400 hover:bg-stone-50')}`}
+                          title="The Outrigger (Split View)"
+                      >
+                          <SplitSquareHorizontal className="w-4 h-4" />
+                          <span className="text-xs font-medium hidden xl:inline font-serif">Outrigger</span>
+                      </button>
+                      </>
+                  )}
+
+                  {/* Deploy Net (Quick-Intake Hub) */}
+                  <DeployNetButton 
+                      onOpenFullNet={() => setIsLiveWellOpen(true)}
+                      themeMode={themeMode}
+                  />
+
+                  <button 
+                      onClick={() => setIsSonarOpen(true)}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all shadow-sm ${themeMode === 'MIDNIGHT' ? 'bg-slate-800 border-slate-600 text-slate-300 hover:text-white' : 'bg-[#fdfbf7] border-stone-300 text-slate-600 hover:border-slate-400 hover:bg-stone-50 hover:text-slate-900'} ${pendingSignalCount > 0 ? 'ring-2 ring-[#3B4B5F]/20' : ''}`}
+                      title={pendingSignalCount > 0 ? `${pendingSignalCount} Pending Signals` : "Sonar Scan (Alt + S)"}
+                  >
+                      <Search className="w-3 h-3" />
+                      Sonar
+                      {pendingSignalCount > 0 && (
+                          <span className="bg-[#3B4B5F] text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold ml-1 animate-pulse">{pendingSignalCount} PENDING</span>
+                      )}
+                  </button>
+                  </div>
+              </header>
+
+              {/* Workspace Content */}
+              <div className="flex-1 overflow-hidden flex relative z-10">
+                  {/* Primary View */}
+                  <div className={`flex-1 overflow-y-auto p-6 md:p-8 h-full min-w-[300px] border-r ${themeMode === 'MIDNIGHT' ? 'border-slate-700' : 'border-stone-300'}`}>
+                      {renderViewContent(currentView)}
+                  </div>
+
+                  {/* The Outrigger (Secondary View) */}
+                  {isSplitView && !isSubmerged && (
+                      <div className={`flex-1 overflow-y-auto p-6 md:p-8 h-full min-w-[300px] relative border-l ${themeMode === 'MIDNIGHT' ? 'bg-slate-900 border-slate-700' : 'bg-[#fdfbf7] border-stone-300'}`}>
+                      <div className="absolute top-4 right-4 z-10 flex gap-2">
+                          <select 
+                          value={secondaryView} 
+                          onChange={(e) => setSecondaryView(e.target.value as ViewState)}
+                          className="bg-white border border-stone-300 text-xs rounded shadow-sm px-2 py-1 outline-none focus:ring-1 focus:ring-blue-300 text-slate-800 font-serif"
+                          >
+                          {Object.values(ViewState).map(v => (
+                              <option key={v} value={v}>{v}</option>
+                          ))}
+                          </select>
+                          <button onClick={() => setIsSplitView(false)} className="p-1 bg-white border border-stone-300 rounded hover:text-red-500 text-slate-500">
+                          <X className="w-4 h-4" />
+                          </button>
+                      </div>
+                      {renderViewContent(secondaryView)}
+                      </div>
+                  )}
+              </div>
+          </main>
+
+          {/* STARBOARD-RAIL (Right Control Rail) - Layer 2 */}
+          <RightControlRail />
+      
+      </div>
+
+      {/* Layer 3: Overlays */}
+      <LiveWell isOpen={isLiveWellOpen} onClose={() => setIsLiveWellOpen(false)} />
+      <Sonar isOpen={isSonarOpen} onClose={() => setIsSonarOpen(false)} onNavigate={handleNavigate} />
+      <TheNet />
 
       {/* Cabin Mode Vignette */}
       {cabinMode && isSubmerged && (
@@ -574,147 +692,6 @@ export const App = () => {
       {isOvertime && (
           <div className="fixed inset-0 pointer-events-none z-[55] bg-orange-500/5 mix-blend-overlay shadow-[inset_0_0_100px_rgba(255,165,0,0.2)] transition-opacity duration-[2000ms]"></div>
       )}
-
-      {/* Modal: The Daily Catch */}
-      {showDailyCatch && <DailyCatch onComplete={handleDailyCatchComplete} />}
-      
-      {/* The Buoy (Floating Call Overlay) */}
-      <TheBuoy />
-      
-      {/* Script Lure (Slide-out) */}
-      <ScriptLure />
-
-      {/* Layout Grid: [Sidebar] [Workspace] [LiveWell] */}
-      
-      {/* 1. The Dock (Sidebar) */}
-      <Sidebar 
-        currentView={currentView} 
-        onChangeView={handleNavigate} 
-        isDevOverlayActive={isDevOverlayActive}
-        onToggleDevOverlay={() => setIsDevOverlayActive(!isDevOverlayActive)}
-      />
-      
-      {/* 2. The Main Deck (Workspace) */}
-      <main className={`flex-1 h-full overflow-hidden flex flex-col deep-water-transition z-10 relative opacity-100 ${cabinMode && isSubmerged ? 'brightness-90 contrast-110' : ''}`}>
-        
-        {/* Horizon View (Voyage Bar) - Always visible when underway or not */}
-        <VoyageBar />
-
-        {/* Fishing Line (Focus Tool) */}
-        <FishingLine />
-
-        {/* Top Bar (The Bridge) */}
-        <header className={`h-16 flex items-center justify-between px-6 border-b z-20 shrink-0 transition-colors ${themeMode === 'MIDNIGHT' ? 'bg-slate-900/80 border-slate-700' : 'bg-[#F8F9FA]/80 border-[#E0E0E0]'} backdrop-blur-sm`}>
-            {/* Left: Ghost Catch */}
-            <div className="flex items-center gap-4">
-               {isSubmerged ? (
-                 <div className="flex items-center gap-3 animate-pulse">
-                   <div className="w-2 h-2 rounded-full bg-[#3B4B5F]"></div>
-                   <span className="font-mono text-[#3B4B5F] text-sm tracking-widest uppercase">Underway</span>
-                 </div>
-               ) : (
-                 <>
-                   <h1 className="font-bold tracking-tight hidden md:block">
-                     {currentView.charAt(0) + currentView.slice(1).toLowerCase().replace('_', ' ')}
-                   </h1>
-                   
-                   {/* Heading Compass */}
-                   <div className={`hidden lg:flex items-center gap-2 text-[10px] font-mono px-2 py-1 rounded border ml-4 animate-in fade-in slide-in-from-left-2 shadow-sm ${themeMode === 'MIDNIGHT' ? 'bg-slate-800 border-slate-600 text-slate-300' : 'bg-white border-[#E0E0E0] text-slate-500'}`}>
-                     <Compass className="w-3 h-3 text-blue-600" />
-                     <span className="font-bold tabular-nums">HDG {heading.toFixed(0)}°</span>
-                     <span className="opacity-30">|</span>
-                     <span className="truncate max-w-[150px] uppercase font-bold opacity-80">{topTask ? topTask.title : currentView}</span>
-                   </div>
-                 </>
-               )}
-            </div>
-
-            {/* Right Controls */}
-            <div className="flex items-center gap-3">
-               
-               {/* ETA Indicator */}
-               <div className={`hidden md:flex items-center gap-1.5 px-2 py-1 rounded border shadow-sm ${themeMode === 'MIDNIGHT' ? 'bg-slate-800 border-slate-600 text-slate-300' : 'bg-white border-[#E0E0E0] text-slate-600'}`} title="Estimated Arrival">
-                   <Clock className="w-3.5 h-3.5 opacity-60" />
-                   <span className={`text-xs font-mono font-bold ${activeSession ? 'text-[#3B4B5F]' : 'text-slate-400'}`}>{getETA()}</span>
-               </div>
-
-               {/* The Current (Predictive Workload Meter) */}
-               <TheCurrent />
-
-               <div className="w-px h-4 bg-current opacity-20 mx-1"></div>
-               
-               {!isSubmerged && (
-                 <>
-                   <button 
-                     onClick={() => setIsSplitView(!isSplitView)}
-                     className={`p-2 rounded-lg transition-colors ${isSplitView ? 'bg-blue-100 text-blue-600' : (themeMode === 'MIDNIGHT' ? 'bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-200' : 'bg-white border border-[#E0E0E0] text-slate-500 hover:text-slate-800')}`}
-                     title="The Outrigger (Split View)"
-                   >
-                     <SplitSquareHorizontal className="w-5 h-5" />
-                   </button>
-                 </>
-               )}
-
-               <button 
-                 onClick={() => setIsLiveWellOpen(!isLiveWellOpen)}
-                 className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all shadow-sm ${themeMode === 'MIDNIGHT' ? 'bg-slate-800 border-slate-600 text-slate-300 hover:text-white' : 'bg-white border border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50'} ${liveWellItemCount > 0 ? 'ring-2 ring-slate-200' : ''}`}
-                 title="Deploy Net (Live Well)"
-               >
-                 <Grid className={`w-3 h-3 ${themeMode === 'MIDNIGHT' ? '' : 'text-[#3B4B5F]'}`} />
-                 Deploy Net
-                 {liveWellItemCount > 0 && (
-                     <span className="bg-[#3B4B5F] text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold ml-1">{liveWellItemCount}</span>
-                 )}
-               </button>
-
-               <button 
-                 onClick={() => setIsSonarOpen(true)}
-                 className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all shadow-sm ${themeMode === 'MIDNIGHT' ? 'bg-slate-800 border-slate-600 text-slate-300 hover:text-white' : 'bg-white border border-[#E0E0E0] text-slate-500 hover:border-blue-300 hover:text-blue-600'} ${pendingSignalCount > 0 ? 'ring-2 ring-[#3B4B5F]/20' : ''}`}
-                 title={pendingSignalCount > 0 ? `${pendingSignalCount} Pending Signals` : "Sonar Scan (Alt + S)"}
-               >
-                 <Search className="w-3 h-3" />
-                 Sonar
-                 {pendingSignalCount > 0 && (
-                     <span className="bg-[#3B4B5F] text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold ml-1 animate-pulse">{pendingSignalCount} PENDING</span>
-                 )}
-               </button>
-            </div>
-        </header>
-
-        {/* Workspace Content */}
-        <div className="flex-1 overflow-hidden flex relative">
-           {/* Primary View */}
-           <div className={`flex-1 overflow-y-auto p-6 md:p-8 h-full min-w-[300px] border-r ${themeMode === 'MIDNIGHT' ? 'border-slate-700' : 'border-[#E0E0E0]'}`}>
-              {renderViewContent(currentView)}
-           </div>
-
-           {/* The Outrigger (Secondary View) */}
-           {isSplitView && !isSubmerged && (
-             <div className={`flex-1 overflow-y-auto p-6 md:p-8 h-full min-w-[300px] relative border-l ${themeMode === 'MIDNIGHT' ? 'bg-slate-900 border-slate-700' : 'bg-slate-50/50 border-[#E0E0E0]'}`}>
-               <div className="absolute top-4 right-4 z-10 flex gap-2">
-                 <select 
-                   value={secondaryView} 
-                   onChange={(e) => setSecondaryView(e.target.value as ViewState)}
-                   className="bg-white border border-[#E0E0E0] text-xs rounded shadow-sm px-2 py-1 outline-none focus:ring-1 focus:ring-blue-300 text-slate-800"
-                 >
-                   {Object.values(ViewState).map(v => (
-                     <option key={v} value={v}>{v}</option>
-                   ))}
-                 </select>
-                 <button onClick={() => setIsSplitView(false)} className="p-1 bg-white border border-[#E0E0E0] rounded hover:text-red-500 text-slate-500">
-                   <X className="w-4 h-4" />
-                 </button>
-               </div>
-               {renderViewContent(secondaryView)}
-             </div>
-           )}
-        </div>
-      </main>
-
-      {/* Overlays */}
-      <LiveWell isOpen={isLiveWellOpen} onClose={() => setIsLiveWellOpen(false)} />
-      <Sonar isOpen={isSonarOpen} onClose={() => setIsSonarOpen(false)} onNavigate={handleNavigate} />
-      <TheNet />
 
     </div>
   );

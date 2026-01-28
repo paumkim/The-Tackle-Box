@@ -51,7 +51,10 @@ export const PressureGauge: React.FC = () => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-[#E0E0E0] shadow-sm flex flex-col justify-between h-48 relative overflow-hidden">
+    <div className="bg-[#fdfbf7] p-6 rounded-xl border-2 border-stone-200 shadow-sm flex flex-col justify-between h-48 relative overflow-hidden">
+      {/* Texture Overlay */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-30 mix-blend-multiply pointer-events-none"></div>
+
       <div className="flex justify-between items-start z-10">
         <div>
           <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1 flex items-center">
@@ -72,12 +75,12 @@ export const PressureGauge: React.FC = () => {
       </div>
 
       <div className="flex items-end gap-2 mt-4 z-10">
-        <span className="text-4xl font-bold text-slate-800">{pressure}%</span>
+        <span className="text-4xl font-bold text-slate-800 font-serif">{pressure}%</span>
         <span className="text-xs text-slate-500 mb-2">Capacity</span>
       </div>
 
       {/* Visual Gauge Bar */}
-      <div className="w-full bg-slate-100 h-3 rounded-full mt-4 overflow-hidden z-10">
+      <div className="w-full bg-stone-200 h-3 rounded-full mt-4 overflow-hidden z-10 border border-stone-300">
         <motion.div 
           className="h-full rounded-full"
           initial={{ width: 0 }}
@@ -86,14 +89,14 @@ export const PressureGauge: React.FC = () => {
         />
       </div>
 
-      <div className="mt-2 flex justify-between items-center text-xs text-slate-400 z-10">
+      <div className="mt-2 flex justify-between items-center text-xs text-slate-400 z-10 font-mono">
         <span>
             {pressure < 50 ? "Stable Waters." : 
              pressure < 80 ? "Pressure Rising." : 
              "CRITICAL LOAD."}
         </span>
         {bilgeLevel > 20 && (
-            <span className="flex items-center gap-1 text-blue-400">
+            <span className="flex items-center gap-1 text-blue-500">
                 <Droplets className="w-3 h-3" />
                 Taking on Water
             </span>
@@ -101,7 +104,7 @@ export const PressureGauge: React.FC = () => {
       </div>
 
       {/* Decorative Background */}
-      <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full opacity-10" style={{ backgroundColor: getColor(pressure) }}></div>
+      <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full opacity-10 mix-blend-multiply" style={{ backgroundColor: getColor(pressure) }}></div>
     </div>
   );
 };

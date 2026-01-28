@@ -23,10 +23,10 @@ class TackleBoxDB extends Dexie {
     super('TackleBoxDB');
     
     // Schema definition
-    (this as any).version(15).stores({
+    (this as any).version(16).stores({
       tasks: '++id, title, isCompleted, priority, effort, dueDate, createdAt, projectId',
-      notes: '++id, title, folder, updatedAt, isDeleted, depth, owner, *tags',
-      assets: '++id, name, type, createdAt, lastAccessed, extractedText, location, folderId, deletedAt, *tags',
+      notes: '++id, title, folder, updatedAt, isDeleted, depth, owner, isFresh, *tags',
+      assets: '++id, name, type, createdAt, lastAccessed, extractedText, location, folderId, deletedAt, isFresh, *tags',
       folders: '++id, name, createdAt',
       sessions: '++id, startTime, endTime, signedAt',
       snapshots: '++id, timestamp',

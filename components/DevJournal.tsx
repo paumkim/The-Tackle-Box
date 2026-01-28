@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { Terminal, Bug, Cpu, Layers } from 'lucide-react';
 
 export const DevJournal: React.FC = () => {
   return (
-    <div className="max-w-4xl mx-auto h-full overflow-y-auto pb-10">
+    <div className="w-full h-full overflow-y-auto pb-10 px-6 py-6">
       <header className="mb-8 border-b border-slate-200 pb-6">
         <h2 className="text-2xl font-bold text-slate-800 flex items-center">
           <Terminal className="w-6 h-6 mr-3 text-slate-600" />
