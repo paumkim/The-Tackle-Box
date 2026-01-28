@@ -10,6 +10,22 @@ interface VoyageStats {
   itemsCaught: number;
 }
 
+export interface ContextMenuItem {
+  label: string;
+  action: () => void;
+  icon?: string;
+  danger?: boolean;
+  type?: 'ACTION' | 'SEPARATOR' | 'HEADER';
+}
+
+interface ContextMenuState {
+  isOpen: boolean;
+  x: number;
+  y: number;
+  header?: string;
+  items: ContextMenuItem[];
+}
+
 interface AppState {
   // Sidebar State
   sidebarState: SidebarState;
@@ -25,6 +41,11 @@ interface AppState {
   // Settings Modal State
   isSettingsOpen: boolean;
   setSettingsOpen: (isOpen: boolean) => void;
+
+  // Context Menu State (Global)
+  contextMenu: ContextMenuState;
+  openContextMenu: (payload: { x: number, y: number, header?: string, items: ContextMenuItem[] }) => void;
+  closeContextMenu: () => void;
 
   // Chat / Hook State
   isChatOpen: boolean;
@@ -324,6 +345,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   isSettingsOpen: false,
   setSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
+
+  contextMenu: { isOpen: false, x: 0, y: 0, items: [] },
+  openContextMenu: (payload) => set({ contextMenu: { isOpen: true, ...payload } }),
+  closeContextMenu: () => set(state => ({ contextMenu: { ...state.contextMenu, isOpen: false } })),
 
   isChatOpen: false,
   setChatOpen: (isOpen) => set({ isChatOpen: isOpen }),

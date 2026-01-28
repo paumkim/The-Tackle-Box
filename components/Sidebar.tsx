@@ -75,46 +75,37 @@ const KnotMeter = () => {
     
     const [speed, setSpeed] = useState(12.4); 
     const targetSpeed = useRef(12.4);
-    const idleTimeout = useRef<number | null>(null);
     
     // Boost speed when Full Ahead
     const baseSpeed = isSubmerged ? 16.0 : 12.0;
     const dragPenalty = isDragDetected ? 4.0 : 0;
 
     useEffect(() => {
-        const handleActivity = () => { 
-            let baseMax = (baseSpeed + 6.5) - dragPenalty;
-            targetSpeed.current = Math.min(targetSpeed.current + 0.3, baseMax);
-            if (idleTimeout.current) clearTimeout(idleTimeout.current);
-            idleTimeout.current = window.setTimeout(() => {
-                 targetSpeed.current = (baseSpeed - dragPenalty) + Math.random(); 
-            }, 2000);
-        };
-
-        const fluctuate = setInterval(() => {
-            let baseMin = (baseSpeed + 1.0) - dragPenalty;
-            if (targetSpeed.current <= baseMin) {
-                 targetSpeed.current = (baseSpeed - dragPenalty) + (Math.random() * 0.8);
-            }
-        }, 3000);
-
-        window.addEventListener('mousemove', handleActivity);
-        window.addEventListener('keydown', handleActivity);
-        
+        // Reduced frequency for performance (Hull Scraping)
         const renderLoop = setInterval(() => {
+             // Logic update
+             let baseMax = (baseSpeed + 6.5) - dragPenalty;
+             
+             // Natural Fluctuation
+             if (Math.random() > 0.8) {
+                 targetSpeed.current = Math.min(targetSpeed.current + 0.3, baseMax);
+             } else if (Math.random() > 0.8) {
+                 let baseMin = (baseSpeed + 1.0) - dragPenalty;
+                 if (targetSpeed.current <= baseMin) {
+                     targetSpeed.current = (baseSpeed - dragPenalty) + (Math.random() * 0.8);
+                 }
+             }
+
+             // Interpolate
              setSpeed(prev => {
                 const diff = targetSpeed.current - prev;
                 if (Math.abs(diff) < 0.05) return prev;
-                return prev + diff * 0.05; 
+                return prev + diff * 0.1; // Slower easing
             });
-        }, 50);
+        }, 200); // 200ms throttle (was 50ms)
 
         return () => {
-            window.removeEventListener('mousemove', handleActivity);
-            window.removeEventListener('keydown', handleActivity);
-            clearInterval(fluctuate);
             clearInterval(renderLoop);
-            if (idleTimeout.current) clearTimeout(idleTimeout.current);
         }
     }, [dragPenalty, baseSpeed]);
 
@@ -178,8 +169,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const weatherCondition = useAppStore(state => state.weatherCondition);
   const hookedContactId = useAppStore(state => state.hookedContactId);
   const setHookedContactId = useAppStore(state => state.setHookedContactId);
-  const quietMode = useAppStore(state => state.quietMode);
-  const toggleQuietMode = useAppStore(state => state.toggleQuietMode);
   const sosLatchEnabled = useAppStore(state => state.sosLatchEnabled);
   const setConfirmingBreak = useAppStore(state => state.setConfirmingBreak);
   const setSettingsOpen = useAppStore(state => state.setSettingsOpen);
@@ -190,11 +179,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isCrewTyping = useAppStore(state => state.isCrewTyping);
   
   const [navItems, setNavItems] = useState<NavItem[]>(DEFAULT_NAV_ITEMS);
-  const [draggedItem, setDraggedItem] = useState<NavItem | null>(null);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [isBottleOpen, setIsBottleOpen] = useState(false);
   const [isDepthsOpen, setIsDepthsOpen] = useState(false);
-  const [cargoDragOver, setCargoDragOver] = useState(false);
   const [showHookSelector, setShowHookSelector] = useState(false);
   
   // Queries
@@ -218,69 +205,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       else setDragWidth(0);
     }
   }, [sidebarState, isResizing]);
-
-  const saveOrder = (items: NavItem[]) => {
-    setNavItems(items);
-    localStorage.setItem('tackle_nav_order', JSON.stringify(items));
-  };
-
-  const handleDragStart = (e: React.DragEvent, item: NavItem) => {
-    setDraggedItem(item);
-    e.dataTransfer.effectAllowed = 'move';
-    const img = new Image();
-    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    e.dataTransfer.setDragImage(img, 0, 0);
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (!draggedItem) return;
-    const draggedIndex = navItems.findIndex(i => i.id === draggedItem.id);
-    if (draggedIndex === index) return;
-    const newItems = [...navItems];
-    const [removed] = newItems.splice(draggedIndex, 1);
-    newItems.splice(index, 0, removed);
-    setNavItems(newItems);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (draggedItem) {
-      saveOrder(navItems);
-      setDraggedItem(null);
-    }
-  };
-
-  // Cargo Hold Logic
-  const handleCargoDragOver = (e: React.DragEvent) => {
-      e.preventDefault();
-      if (!cargoDragOver) setCargoDragOver(true);
-  };
-
-  const handleCargoDragLeave = () => {
-      setCargoDragOver(false);
-  };
-
-  const handleCargoDrop = async (e: React.DragEvent) => {
-      e.preventDefault();
-      setCargoDragOver(false);
-      
-      const files = Array.from(e.dataTransfer.files) as File[];
-      if (files.length > 0) {
-          for (const file of files) {
-              await db.assets.add({
-                  name: file.name,
-                  type: file.type,
-                  size: file.size,
-                  data: file,
-                  createdAt: Date.now(),
-                  location: 'live_well',
-                  species: file.type.startsWith('image') ? 'Scales' : 'Shells'
-              });
-          }
-          NotificationManager.send("Cargo Secured", `${files.length} items stowed in The Trawl.`);
-      }
-  };
 
   const startResizing = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -463,26 +387,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {navItems.map((item, index) => {
             const Icon = IconMap[item.icon] || Fish;
             const isActive = currentView === item.id && item.id !== ViewState.SETTINGS;
-            const isCargoTarget = item.id === ViewState.INBOX && cargoDragOver;
             
             // Special case for Settings active state
             const isSettingsActive = item.id === ViewState.SETTINGS && isSettingsOpen;
             const effectiveActive = isActive || isSettingsActive;
 
             // Define styles for active state
-            let activeStyle = 'navigator-glass font-serif font-bold text-slate-800'; // Default active
+            let activeStyle = 'navigator-glass font-serif font-bold text-slate-800'; 
             if (item.id === ViewState.SETTINGS && isSettingsOpen) {
-                activeStyle = 'bg-white shadow-[0_0_15px_rgba(59,130,246,0.3)] text-slate-900 border-blue-200 ring-2 ring-blue-50 font-bold'; // High Intensity Focus
+                activeStyle = 'bg-white shadow-[0_0_15px_rgba(59,130,246,0.3)] text-slate-900 border-blue-200 ring-2 ring-blue-50 font-bold';
             }
 
             return (
               <div
                 key={item.id}
-                draggable={!renderMini}
-                onDragStart={(e) => handleDragStart(e, item)}
-                onDragOver={(e) => item.id === ViewState.INBOX ? handleCargoDragOver(e) : handleDragOver(e, index)}
-                onDragLeave={() => item.id === ViewState.INBOX ? handleCargoDragLeave() : null}
-                onDrop={(e) => item.id === ViewState.INBOX ? handleCargoDrop(e) : handleDrop(e)}
                 className={`relative group/item ${effectiveActive ? 'z-10' : ''}`}
                 onMouseEnter={() => setHoveredItem(item.id)}
                 onMouseLeave={() => setHoveredItem(null)}
@@ -498,11 +416,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   className={`w-full flex items-center ${renderMini ? 'justify-center px-0' : 'px-3'} py-2.5 rounded-lg text-sm font-bold relative bob-on-hover ${
                     effectiveActive 
                       ? activeStyle
-                      : (isCargoTarget ? 'bg-blue-100 ring-2 ring-blue-300 text-blue-900' : 'text-slate-500 hover:bg-stone-100 hover:text-slate-800 hover:shadow-inner')
+                      : 'text-slate-500 hover:bg-stone-100 hover:text-slate-800 hover:shadow-inner'
                   }`}
                 >
                   <Icon className={`w-4 h-4 shrink-0 ${!renderMini && 'mr-3'} ${
-                    effectiveActive ? 'text-current' : (isCargoTarget ? 'text-blue-800 animate-bounce' : 'text-slate-400 group-hover/item:text-slate-600')
+                    effectiveActive ? 'text-current' : 'text-slate-400 group-hover/item:text-slate-600'
                   }`} />
                   
                   {!renderMini && (
@@ -513,10 +431,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         transition={{ duration: 0 }}
                         className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis"
                       >
-                        {isCargoTarget ? 'Drop Cargo' : item.label}
+                        {item.label}
                       </motion.span>
-                      {item.id === ViewState.INBOX && isCargoTarget && <UploadCloud className="w-4 h-4 animate-pulse mr-2" />}
-                      {!isCargoTarget && <GripVertical className="w-3 h-3 text-slate-300 opacity-0 group-hover/item:opacity-100 cursor-grab shrink-0" />}
                     </>
                   )}
                 </button>

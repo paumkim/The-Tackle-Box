@@ -42,16 +42,11 @@ import { NotificationManager } from './utils/notifications';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const WeatherLayer: React.FC<{ condition: WeatherCondition }> = React.memo(({ condition }) => {
+  // Optimization: Return null immediately for CLEAR weather (handled by base CSS) to avoid unnecessary DOM depth
+  if (condition === 'CLEAR') return null;
+
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden will-change-transform">
-        {/* CLEAR SEAS (Ripple Effect) */}
-        {condition === 'CLEAR' && (
-            <div className="absolute inset-0 opacity-10">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[150vw] bg-[radial-gradient(circle,rgba(59,130,246,0.1)_0%,transparent_70%)] animate-[pulse-glow_10s_infinite] will-change-transform"></div>
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 animate-grain will-change-transform"></div>
-            </div>
-        )}
-
         {/* THE MIST (Fog) */}
         {(condition === 'FOG' || condition === 'RAIN') && (
             <div className="absolute inset-0 backdrop-blur-[1px] bg-white/20">
@@ -362,11 +357,8 @@ export const App = () => {
       try {
         if ('wakeLock' in navigator) {
           wakeLock = await (navigator as any).wakeLock.request('screen');
-          // console.log('Wake Lock active'); // Debug log removed
         }
-      } catch (err) {
-        // console.error(err); // Error handling can be silent for non-critical
-      }
+      } catch (err) {}
     };
 
     const releaseWakeLock = async () => {
@@ -492,7 +484,6 @@ export const App = () => {
           if (Math.random() > 0.95) {
               if (crewManifest.length > 0) {
                   const target = crewManifest[Math.floor(Math.random() * crewManifest.length)];
-                  // Simulate simple status update if needed, placeholder logic
               }
           }
       }, 10000);

@@ -9,7 +9,7 @@ import {
   Video, 
   Folder as FolderIcon,
   FolderOpen,
-  Plus,
+  FolderPlus,
   Trash2,
   Box,
   Info,
@@ -27,17 +27,14 @@ import {
   Lock,
   PanelLeft,
   PanelRight,
-  FolderPlus,
   Upload,
   ExternalLink,
-  Edit2,
-  MoreVertical,
-  ArrowUpRight,
-  AlertTriangle
+  ArrowUpRight
 } from 'lucide-react';
-import { Asset } from '../types';
+import { Asset, ViewState } from '../types';
 import { LightTable } from './LightTable';
 import { NotificationManager } from '../utils/notifications';
+import { useAppStore } from '../store';
 
 // Audio Helper (Synthetic Mechanical Click)
 const playSafetyClick = (type: 'LIFT' | 'ENGAGE') => {
@@ -52,7 +49,6 @@ const playSafetyClick = (type: 'LIFT' | 'ENGAGE') => {
         gain.connect(ctx.destination);
         
         if (type === 'LIFT') {
-            // High pitch metallic click (spring release)
             osc.frequency.setValueAtTime(800, ctx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.05);
             gain.gain.setValueAtTime(0.1, ctx.currentTime);
@@ -60,7 +56,6 @@ const playSafetyClick = (type: 'LIFT' | 'ENGAGE') => {
             osc.start(ctx.currentTime);
             osc.stop(ctx.currentTime + 0.05);
         } else {
-            // Heavy thud (engage)
             osc.type = 'square';
             osc.frequency.setValueAtTime(150, ctx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.1);
@@ -69,27 +64,23 @@ const playSafetyClick = (type: 'LIFT' | 'ENGAGE') => {
             osc.start(ctx.currentTime);
             osc.stop(ctx.currentTime + 0.1);
         }
-    } catch (e) {
-        // Audio policy prevention
-    }
+    } catch (e) {}
 };
 
 export const Aquarium: React.FC = () => {
-  // State
   const [currentFolderId, setCurrentFolderId] = useState<number | null>(() => {
     const saved = localStorage.getItem('tackle_aquarium_folder');
     return saved ? parseInt(saved) : null;
   });
   
-  // Selection State
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number>(-1);
   const [inspectAsset, setInspectAsset] = useState<Asset | null>(null);
   const [viewMode, setViewMode] = useState<'GRID' | 'LIST'>('LIST'); 
   
-  // Panel Visibility (Responsive)
+  // Panel Visibility
   const [showLeftPanel, setShowLeftPanel] = useState(window.innerWidth >= 768);
-  const [showRightPanel, setShowRightPanel] = useState(window.innerWidth >= 1280);
+  const [showRightPanel, setShowRightPanel] = useState(false); // Default closed for speed
 
   // Modal State
   const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
@@ -98,8 +89,11 @@ export const Aquarium: React.FC = () => {
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  // Context Menu State
-  const [contextMenu, setContextMenu] = useState<{x: number, y: number, type: 'EMPTY' | 'FOLDER' | 'ASSET' | 'MULTI', target?: any} | null>(null);
+  // Store Hooks
+  const openContextMenu = useAppStore(state => state.openContextMenu);
+  const requestNavigation = useAppStore(state => state.requestNavigation);
+  const setSonarOpen = useAppStore(state => state.setSonarOpen);
+  const isSonarOpen = useAppStore(state => state.isSonarOpen);
   const longPressTimer = useRef<number | null>(null);
 
   // Persist navigation
@@ -111,27 +105,12 @@ export const Aquarium: React.FC = () => {
     }
   }, [currentFolderId]);
 
-  // Close context menu on global click
+  // Auto-show inspector logic
   useEffect(() => {
-      const handleClick = () => setContextMenu(null);
-      window.addEventListener('click', handleClick);
-      return () => window.removeEventListener('click', handleClick);
-  }, []);
-
-  // Responsive Handler
-  useEffect(() => {
-      const handleResize = () => {
-          if (window.innerWidth < 768) setShowLeftPanel(false);
-          if (window.innerWidth < 1280) setShowRightPanel(false);
-      };
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Auto-show inspector on selection (if screen large enough)
-  useEffect(() => {
-      if (selection.size === 1 && window.innerWidth >= 1280) {
+      if (selection.size > 0 && window.innerWidth >= 1280) {
           setShowRightPanel(true);
+      } else if (selection.size === 0) {
+          setShowRightPanel(false);
       }
   }, [selection]);
 
@@ -139,10 +118,9 @@ export const Aquarium: React.FC = () => {
   const folders = useLiveQuery(() => db.folders.toArray());
   const assets = useLiveQuery(() => db.assets.filter(a => !a.deletedAt).toArray());
 
-  // Filtering
   const currentFolder = folders?.find(f => f.id === currentFolderId);
 
-  // Flattened List for Rendering & Range Selection
+  // Memoized List
   const rowItems = useMemo(() => {
       const visibleFolders = currentFolderId === null 
         ? (folders?.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase())) || [])
@@ -167,32 +145,26 @@ export const Aquarium: React.FC = () => {
 
   // Selection Logic
   const handleSelection = (e: React.MouseEvent, key: string, index: number) => {
-      // If dragging, don't trigger select? (Standard OS behavior handles this, simplifying for web)
-      // e.stopPropagation(); // Allow events to bubble if needed for drag, but usually selection stops prop
-      
       let newSet = new Set(e.ctrlKey || e.metaKey ? selection : []);
       
       if (e.shiftKey && lastSelectedIndex !== -1) {
-          // Range Select
           const start = Math.min(lastSelectedIndex, index);
           const end = Math.max(lastSelectedIndex, index);
           for (let i = start; i <= end; i++) {
               if (rowItems[i]) newSet.add(rowItems[i].key);
           }
       } else {
-          // Single / Toggle
           if (e.ctrlKey || e.metaKey) {
               if (newSet.has(key)) newSet.delete(key);
               else newSet.add(key);
           } else {
-              if (!newSet.has(key) || newSet.size > 1) { // If clicking unselected or multi-group, reset
+              if (!newSet.has(key) || newSet.size > 1) { 
                   newSet.clear();
                   newSet.add(key);
               }
           }
           setLastSelectedIndex(index);
       }
-      
       setSelection(newSet);
   };
 
@@ -201,7 +173,6 @@ export const Aquarium: React.FC = () => {
       setLastSelectedIndex(-1);
   };
 
-  // Actions
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newFolderName.trim()) {
@@ -234,72 +205,6 @@ export const Aquarium: React.FC = () => {
       }
   };
 
-  // --- Context Menu Logic ---
-  const handleContextMenu = (e: React.MouseEvent, type: 'EMPTY' | 'FOLDER' | 'ASSET', target?: any) => {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      let newSet = new Set(selection);
-
-      // Unified Context Protocol: Smart Selection Update
-      if (target) {
-          // If the item right-clicked is NOT in the current selection, select ONLY it
-          if (!selection.has(target.key)) {
-              newSet.clear();
-              newSet.add(target.key);
-              setSelection(newSet);
-              // Update Last Selected Index for Shift-Click continuity
-              const index = rowItems.findIndex(i => i.key === target.key);
-              setLastSelectedIndex(index);
-          }
-          // If it IS in the selection, do not change selection (allows bulk action on existing selection)
-      } else {
-          // Right clicking empty space (Desks usually deselect files on background click)
-          if (type === 'EMPTY') {
-              newSet.clear();
-              setSelection(newSet);
-          }
-      }
-
-      // Hybrid Interaction: Snap-open the Inspector on desktop if we have a valid asset selection
-      if ((type === 'ASSET' || type === 'FOLDER') && window.innerWidth >= 1280) {
-          setShowRightPanel(true);
-      }
-
-      // Determine context menu type based on resulting selection
-      const finalType = newSet.size > 1 ? 'MULTI' : type;
-
-      setContextMenu({
-          x: e.clientX,
-          y: e.clientY,
-          type: finalType,
-          target
-      });
-  };
-
-  const handleTouchStart = (type: 'EMPTY' | 'FOLDER' | 'ASSET', target?: any, e?: React.TouchEvent) => {
-      longPressTimer.current = window.setTimeout(() => {
-          if (e) {
-              const touch = e.touches[0];
-              setContextMenu({
-                  x: touch.clientX,
-                  y: touch.clientY,
-                  type,
-                  target
-              });
-          }
-      }, 600); // 600ms long press
-  };
-
-  const handleTouchEnd = () => {
-      if (longPressTimer.current) {
-          clearTimeout(longPressTimer.current);
-          longPressTimer.current = null;
-      }
-  };
-
-  // --- Bulk Operations ---
-
   const getSelectedIds = () => {
       const assetIds: number[] = [];
       const folderIds: number[] = [];
@@ -312,29 +217,19 @@ export const Aquarium: React.FC = () => {
       return { assetIds, folderIds };
   };
 
-  const openDeleteModal = () => {
-      setIsDeleteModalOpen(true);
-  };
-
   const executeDelete = async () => {
       const { assetIds, folderIds } = getSelectedIds();
       playSafetyClick('ENGAGE');
-      
-      // Close modal immediately for snap feel
       setIsDeleteModalOpen(false); 
-      clearSelection(); // Clear selection immediately
+      clearSelection(); 
 
-      // Background process for moving to Depths
       (async () => {
           if (assetIds.length > 0) {
               await db.assets.where('id').anyOf(assetIds).modify({ deletedAt: Date.now() });
           }
-          
           if (folderIds.length > 0) {
               for (const fId of folderIds) {
-                  // Soft delete contents inside folders
                   await db.assets.where('folderId').equals(fId).modify({ deletedAt: Date.now() });
-                  // Folders are hard deleted from structure, but contents persist in Depths
                   await db.folders.delete(fId); 
               }
           }
@@ -343,14 +238,11 @@ export const Aquarium: React.FC = () => {
   };
 
   const handleBulkArchive = async () => {
-      // Find or Create "Archive" folder
       let archiveFolder = folders?.find(f => f.name === 'Archive');
       let archiveId = archiveFolder?.id;
-      
       if (!archiveId) {
           archiveId = await db.folders.add({ name: 'Archive', createdAt: Date.now() }) as number;
       }
-
       const { assetIds } = getSelectedIds();
       if (assetIds.length > 0) {
           await db.assets.where('id').anyOf(assetIds).modify({ folderId: archiveId });
@@ -361,11 +253,10 @@ export const Aquarium: React.FC = () => {
   const handleBulkDuplicate = async () => {
       const { assetIds } = getSelectedIds();
       const assetsToClone = await db.assets.where('id').anyOf(assetIds).toArray();
-      
       for (const asset of assetsToClone) {
           await db.assets.add({
               ...asset,
-              id: undefined, // New ID
+              id: undefined,
               name: `${asset.name} (Copy)`,
               createdAt: Date.now()
           });
@@ -382,19 +273,83 @@ export const Aquarium: React.FC = () => {
       clearSelection();
   };
 
-  // Drag & Drop
-  const handleDragStart = (e: React.DragEvent, key: string) => {
-      // If dragging selection, keep it. If dragging unselected, select it.
-      if (!selection.has(key)) {
-          setSelection(new Set([key]));
+  // Global Context Menu Delegation
+  const handleContextMenu = (e: React.MouseEvent, type: 'EMPTY' | 'FOLDER' | 'ASSET', target?: any) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      let newSet = new Set(selection);
+      if (target && !selection.has(target.key)) {
+          newSet.clear();
+          newSet.add(target.key);
+          setSelection(newSet);
+      } else if (type === 'EMPTY') {
+          newSet.clear();
+          setSelection(newSet);
       }
+
+      const finalType = newSet.size > 1 ? 'MULTI' : type;
+      const x = Math.min(e.clientX, window.innerWidth - 220);
+      const y = Math.min(e.clientY, window.innerHeight - 300);
+
+      if (finalType === 'EMPTY') {
+          openContextMenu({
+              x, y,
+              header: 'Bridge Command',
+              items: [
+                  { label: 'New Folder', action: () => setIsNewFolderOpen(true), icon: 'FolderPlus' },
+                  { label: 'Upload File', action: () => handleUploadFile(), icon: 'Upload' },
+                  { type: 'SEPARATOR', label: '', action: () => {} },
+                  { label: 'Go to Bridge', action: () => requestNavigation(ViewState.DASHBOARD), icon: 'LayoutDashboard' },
+                  { label: 'Go to Deck', action: () => requestNavigation(ViewState.TASKS), icon: 'CheckSquare' },
+                  { label: 'Toggle Sonar', action: () => setSonarOpen(!isSonarOpen), icon: 'Radar' }
+              ]
+          });
+      } else {
+          const items = [];
+          if (finalType === 'ASSET') items.push({ label: 'Open', action: () => setInspectAsset(target), icon: 'ExternalLink' });
+          if (finalType === 'FOLDER') items.push({ label: 'Open Folder', action: () => setCurrentFolderId(target.id), icon: 'FolderOpen' });
+          
+          items.push({ type: 'SEPARATOR', label: '', action: () => {} });
+          items.push({ label: 'Move', action: () => setIsMoveModalOpen(true), icon: 'ArrowUpRight' });
+          items.push({ label: 'Duplicate', action: handleBulkDuplicate, icon: 'Copy' });
+          items.push({ label: 'Archive', action: handleBulkArchive, icon: 'Archive' });
+          items.push({ type: 'SEPARATOR', label: '', action: () => {} });
+          items.push({ label: 'Delete', action: () => setIsDeleteModalOpen(true), icon: 'Trash2', danger: true });
+
+          openContextMenu({
+              x, y,
+              header: finalType === 'MULTI' ? 'Batch Actions' : 'Asset Control',
+              items: items as any
+          });
+      }
+  };
+
+  const handleTouchStart = (type: 'EMPTY' | 'FOLDER' | 'ASSET', target?: any, e?: React.TouchEvent) => {
+      longPressTimer.current = window.setTimeout(() => {
+          if (e) {
+              const touch = e.touches[0];
+              const fakeEvent = { preventDefault: () => {}, stopPropagation: () => {}, clientX: touch.clientX, clientY: touch.clientY } as React.MouseEvent;
+              handleContextMenu(fakeEvent, type, target);
+          }
+      }, 600);
+  };
+
+  const handleTouchEnd = () => {
+      if (longPressTimer.current) {
+          clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
+      }
+  };
+
+  const handleDragStart = (e: React.DragEvent, key: string) => {
+      if (!selection.has(key)) setSelection(new Set([key]));
       e.dataTransfer.setData('application/tackle-bulk', 'true');
   };
 
   const handleDropOnFolder = async (e: React.DragEvent, targetFolderId: number | null) => {
       e.preventDefault();
       const isBulk = e.dataTransfer.getData('application/tackle-bulk');
-      
       if (isBulk) {
           const { assetIds } = getSelectedIds();
           if (assetIds.length > 0) {
@@ -404,7 +359,6 @@ export const Aquarium: React.FC = () => {
       }
   };
 
-  // Icons
   const getFileIcon = (type: any, className = "w-5 h-5") => {
     const typeStr = String(type || '');
     if (typeStr.startsWith('image/')) return <ImageIcon className={`${className} text-blue-500`} />;
@@ -417,12 +371,10 @@ export const Aquarium: React.FC = () => {
   const formatSize = (bytes: number) => {
       if (bytes === 0) return '0 B';
       const k = 1024;
-      const sizes = ['B', 'KB', 'MB', 'GB'];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + ['B', 'KB', 'MB', 'GB'][i];
   };
 
-  // Derived State for Inspector
   const selectedCount = selection.size;
   const selectionList = Array.from(selection);
   const singleAsset = selectedCount === 1 && typeof selectionList[0] === 'string' && selectionList[0].startsWith('a-') 
@@ -432,50 +384,22 @@ export const Aquarium: React.FC = () => {
   return (
     <div className="relative w-full h-full flex flex-col overflow-hidden bg-white">
       <LightTable asset={inspectAsset} onClose={() => setInspectAsset(null)} />
-      
-      {/* Hidden File Input */}
       <input type="file" id="aquarium-upload" className="hidden" multiple onChange={handleFileChange} />
 
-      {/* Deletion Modal (The Native Terminal) */}
       {isDeleteModalOpen && (
-          <div 
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/20 backdrop-grayscale-[0.5]" 
-            onClick={() => setIsDeleteModalOpen(false)}
-          >
-              <div 
-                className="w-96 bg-[#fdfbf7] border-2 border-amber-700/50 shadow-2xl p-6 relative" 
-                onClick={e => e.stopPropagation()}
-              >
-                  {/* Decorative Screws */}
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/20 backdrop-grayscale-[0.5]" onClick={() => setIsDeleteModalOpen(false)}>
+              <div className="w-96 bg-[#fdfbf7] border-2 border-amber-700/50 shadow-2xl p-6 relative" onClick={e => e.stopPropagation()}>
                   <div className="absolute top-2 left-2 w-1.5 h-1.5 rounded-full bg-amber-900/20"></div>
                   <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-amber-900/20"></div>
-                  <div className="absolute bottom-2 left-2 w-1.5 h-1.5 rounded-full bg-amber-900/20"></div>
-                  <div className="absolute bottom-2 right-2 w-1.5 h-1.5 rounded-full bg-amber-900/20"></div>
-
                   <h3 className="font-serif font-bold text-slate-900 uppercase tracking-widest text-xs mb-4 border-b border-amber-900/10 pb-2 flex items-center gap-2">
-                      <Lock className="w-3 h-3 text-amber-700" />
-                      Safety Interlock
+                      <Lock className="w-3 h-3 text-amber-700" /> Safety Interlock
                   </h3>
-                  
                   <p className="text-sm font-serif text-slate-700 mb-6 leading-relaxed">
-                      Commit {selectedCount} item{selectedCount > 1 ? 's' : ''} to The Depths? 
-                      <span className="block text-xs text-slate-500 mt-2 italic flex items-center gap-1">
-                          <Archive className="w-3 h-3" />
-                          Items can be recovered from the Archive.
-                      </span>
+                      Commit {selectedCount} item{selectedCount > 1 ? 's' : ''} to The Depths?
                   </p>
-
                   <div className="flex gap-3">
-                      <button 
-                          onClick={() => setIsDeleteModalOpen(false)}
-                          className="flex-1 py-3 border border-slate-300 text-slate-600 font-bold text-xs uppercase tracking-wider hover:bg-slate-50 transition-colors rounded-sm"
-                      >
-                          Abort
-                      </button>
-                      <button 
-                          onClick={executeDelete}
-                          className="flex-1 py-3 bg-slate-900 text-white font-bold text-xs uppercase tracking-wider hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 rounded-sm shadow-md"
-                      >
+                      <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-3 border border-slate-300 text-slate-600 font-bold text-xs uppercase hover:bg-slate-50 rounded-sm">Abort</button>
+                      <button onClick={executeDelete} className="flex-1 py-3 bg-slate-900 text-white font-bold text-xs uppercase hover:bg-slate-800 flex items-center justify-center gap-2 rounded-sm shadow-md">
                           <Trash2 className="w-3 h-3" /> Commit
                       </button>
                   </div>
@@ -483,28 +407,22 @@ export const Aquarium: React.FC = () => {
           </div>
       )}
 
-      {/* New Folder Modal */}
       {isNewFolderOpen && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/20 backdrop-blur-sm" onClick={() => setIsNewFolderOpen(false)}>
-            <div className="bg-[#fdfbf7] p-6 rounded-xl shadow-2xl border border-stone-200 w-80 relative overflow-hidden" onClick={e => e.stopPropagation()}>
-               {/* Paper Texture */}
-               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-50 mix-blend-multiply pointer-events-none"></div>
-               
+            <div className="bg-[#fdfbf7] p-6 rounded-xl shadow-2xl border border-stone-200 w-80 relative" onClick={e => e.stopPropagation()}>
                <div className="relative z-10">
-                   <h3 className="text-sm font-serif font-bold text-slate-800 mb-4 flex items-center gap-2">
-                     <FolderPlus className="w-4 h-4 text-blue-500" /> New Folder
-                   </h3>
+                   <h3 className="text-sm font-serif font-bold text-slate-800 mb-4 flex items-center gap-2"><FolderPlus className="w-4 h-4 text-blue-500" /> New Folder</h3>
                    <form onSubmit={handleCreateFolder}>
                      <input 
                        autoFocus
                        value={newFolderName}
                        onChange={e => setNewFolderName(e.target.value)}
-                       className="w-full bg-white border border-amber-200/50 rounded p-2 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-100 placeholder:text-slate-300 font-medium font-serif"
+                       className="w-full bg-white border border-amber-200/50 rounded p-2 text-sm text-slate-700 outline-none focus:border-amber-400"
                        placeholder="Name your reef..."
                      />
                      <div className="flex justify-end gap-2 mt-4">
-                       <button type="button" onClick={() => setIsNewFolderOpen(false)} className="px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-slate-600 uppercase tracking-wider">Cancel</button>
-                       <button type="submit" className="px-4 py-1.5 bg-slate-800 text-white text-xs font-bold rounded shadow-sm hover:bg-slate-700 uppercase tracking-wider">Create</button>
+                       <button type="button" onClick={() => setIsNewFolderOpen(false)} className="px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-slate-600 uppercase">Cancel</button>
+                       <button type="submit" className="px-4 py-1.5 bg-slate-800 text-white text-xs font-bold rounded shadow-sm hover:bg-slate-700 uppercase">Create</button>
                      </div>
                    </form>
                </div>
@@ -512,114 +430,49 @@ export const Aquarium: React.FC = () => {
           </div>
       )}
 
-      {/* Context Menu - Unified Aged Brass Aesthetic */}
-      {contextMenu && (
-          <div 
-            className="fixed z-[100] bg-[#fdfbf7] border border-amber-900/20 rounded-sm shadow-2xl py-1 min-w-[200px] animate-in fade-in zoom-in-95 duration-75 overflow-hidden"
-            style={{ left: Math.min(contextMenu.x, window.innerWidth - 220), top: Math.min(contextMenu.y, window.innerHeight - 300) }}
-            onClick={(e) => e.stopPropagation()}
-          >
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 border-b border-amber-900/10 bg-stone-50/50">
-                  {contextMenu.type === 'EMPTY' ? 'Deck Commands' : (contextMenu.type === 'MULTI' ? 'Batch Actions' : 'Asset Control')}
-              </div>
-              
-              {contextMenu.type === 'EMPTY' && (
-                  <>
-                      <button onClick={() => { setIsNewFolderOpen(true); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-slate-100 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
-                          <FolderPlus className="w-4 h-4 text-blue-500" /> New Folder
-                      </button>
-                      <button onClick={() => { handleUploadFile(); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-slate-100 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
-                          <Upload className="w-4 h-4 text-slate-500" /> Upload File
-                      </button>
-                  </>
-              )}
-
-              {(contextMenu.type === 'FOLDER' || contextMenu.type === 'ASSET' || contextMenu.type === 'MULTI') && (
-                  <>
-                      {contextMenu.type === 'ASSET' && (
-                          <button onClick={() => { setInspectAsset(contextMenu.target); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-slate-100 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
-                              <ExternalLink className="w-4 h-4 text-slate-500" /> Open
-                          </button>
-                      )}
-                      {contextMenu.type === 'FOLDER' && (
-                          <button onClick={() => { setCurrentFolderId(contextMenu.target.id); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-slate-100 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
-                              <FolderOpen className="w-4 h-4 text-blue-500" /> Open Folder
-                          </button>
-                      )}
-                      
-                      <div className="h-px bg-amber-900/10 mx-2 my-1"></div>
-                      
-                      <button onClick={() => { setIsMoveModalOpen(true); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-slate-100 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
-                          <ArrowUpRight className="w-4 h-4 text-slate-500" /> Move
-                      </button>
-                      <button onClick={() => { handleBulkDuplicate(); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-slate-100 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
-                          <Copy className="w-4 h-4 text-slate-500" /> Duplicate
-                      </button>
-                      <button onClick={() => { handleBulkArchive(); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-slate-100 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
-                          <Archive className="w-4 h-4 text-amber-500" /> Archive
-                      </button>
-                      
-                      <div className="h-px bg-amber-900/10 mx-2 my-1"></div>
-                      
-                      <button 
-                        onClick={() => { 
-                            openDeleteModal();
-                            setContextMenu(null); 
-                        }} 
-                        className="w-full px-4 py-2 hover:bg-red-50 text-left text-xs font-bold text-red-600 flex items-center gap-3"
-                      >
-                          <Trash2 className="w-4 h-4" /> Delete
-                      </button>
-                  </>
-              )}
-          </div>
-      )}
-
       <div className="flex-1 flex overflow-hidden relative">
-          {/* ... Rest of existing Aquarium UI ... */}
           
-          {/* LEFT: Navigation Tree (Adaptive) */}
-          {/* Mobile: Absolute Drawer / Desktop: Relative Col */}
-          <div className={`
-              bg-slate-50 border-r border-stone-200 flex flex-col shrink-0 transition-all duration-300
-              ${showLeftPanel ? 'w-60 translate-x-0' : 'w-0 -translate-x-full overflow-hidden border-none'}
-              ${window.innerWidth < 768 && showLeftPanel ? 'absolute left-0 top-0 bottom-0 z-40 shadow-xl' : 'relative'}
-          `}>
-              <div className="p-3 border-b border-stone-200 flex items-center justify-between bg-[#f8f9fa] min-w-[240px]">
-                  <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                      <HardDrive className="w-3 h-3" /> Storage Tree
-                  </h3>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-2 space-y-0.5 min-w-[240px]">
-                  <div 
-                      onClick={() => { setCurrentFolderId(null); clearSelection(); if (window.innerWidth < 768) setShowLeftPanel(false); }}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => handleDropOnFolder(e, null)}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer text-xs font-bold transition-colors ${currentFolderId === null ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-slate-200'}`}
-                  >
-                      <FolderIcon className={`w-3.5 h-3.5 ${currentFolderId === null ? 'fill-current' : 'text-slate-400'}`} />
-                      Root
+          {/* LEFT: Navigation Tree - Conditional Render for Performance */}
+          {showLeftPanel && (
+              <div className={`
+                  bg-slate-50 border-r border-stone-200 flex flex-col shrink-0 w-60
+                  ${window.innerWidth < 768 ? 'absolute left-0 top-0 bottom-0 z-40 shadow-xl' : 'relative'}
+              `}>
+                  <div className="p-3 border-b border-stone-200 flex items-center justify-between bg-[#f8f9fa] min-w-[240px]">
+                      <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                          <HardDrive className="w-3 h-3" /> Storage Tree
+                      </h3>
                   </div>
-                  {folders?.map(folder => (
+                  
+                  <div className="flex-1 overflow-y-auto p-2 space-y-0.5 min-w-[240px]">
                       <div 
-                          key={folder.id}
-                          onClick={() => { setCurrentFolderId(folder.id!); clearSelection(); if (window.innerWidth < 768) setShowLeftPanel(false); }}
+                          onClick={() => { setCurrentFolderId(null); clearSelection(); if (window.innerWidth < 768) setShowLeftPanel(false); }}
                           onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => handleDropOnFolder(e, folder.id!)}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer text-xs font-medium transition-colors ${currentFolderId === folder.id ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-slate-200'}`}
+                          onDrop={(e) => handleDropOnFolder(e, null)}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer text-xs font-bold transition-colors ${currentFolderId === null ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-slate-200'}`}
                       >
-                          <FolderIcon className={`w-3.5 h-3.5 ${currentFolderId === folder.id ? 'fill-current' : 'text-slate-400'}`} />
-                          {folder.name}
+                          <FolderIcon className={`w-3.5 h-3.5 ${currentFolderId === null ? 'fill-current' : 'text-slate-400'}`} />
+                          Root
                       </div>
-                  ))}
+                      {folders?.map(folder => (
+                          <div 
+                              key={folder.id}
+                              onClick={() => { setCurrentFolderId(folder.id!); clearSelection(); if (window.innerWidth < 768) setShowLeftPanel(false); }}
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={(e) => handleDropOnFolder(e, folder.id!)}
+                              className={`flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer text-xs font-medium transition-colors ${currentFolderId === folder.id ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-slate-200'}`}
+                          >
+                              <FolderIcon className={`w-3.5 h-3.5 ${currentFolderId === folder.id ? 'fill-current' : 'text-slate-400'}`} />
+                              {folder.name}
+                          </div>
+                      ))}
+                  </div>
               </div>
-          </div>
+          )}
 
           {/* CENTER: Main Explorer */}
           <div className="flex-1 flex flex-col min-w-0 bg-white relative z-0">
-              
-              {/* Breadcrumb / Toolbar */}
+              {/* Breadcrumb */}
               <div className="h-12 border-b border-stone-200 flex items-center px-4 justify-between shrink-0 bg-white z-10 gap-4">
                   <div className="flex items-center gap-2 text-sm text-slate-600 overflow-hidden">
                       <button 
@@ -660,31 +513,13 @@ export const Aquarium: React.FC = () => {
                           />
                       </div>
                       <div className="flex bg-slate-100 rounded-md p-0.5 border border-slate-200">
-                          <button 
-                            onClick={() => setViewMode('LIST')}
-                            className={`p-1.5 rounded-sm ${viewMode === 'LIST' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
-                            title="List View"
-                          >
-                              <ListIcon className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => setViewMode('GRID')}
-                            className={`p-1.5 rounded-sm ${viewMode === 'GRID' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
-                            title="Grid View"
-                          >
-                              <LayoutGrid className="w-4 h-4" />
-                          </button>
+                          <button onClick={() => setViewMode('LIST')} className={`p-1.5 rounded-sm ${viewMode === 'LIST' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}><ListIcon className="w-4 h-4" /></button>
+                          <button onClick={() => setViewMode('GRID')} className={`p-1.5 rounded-sm ${viewMode === 'GRID' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}><LayoutGrid className="w-4 h-4" /></button>
                       </div>
                       
                       {selectedCount > 0 && (
                           <div className="border-l border-slate-200 pl-2 ml-2">
-                              <button 
-                                onClick={() => setShowRightPanel(!showRightPanel)}
-                                className={`p-1.5 rounded hover:bg-slate-100 ${showRightPanel ? 'text-blue-600' : 'text-slate-400'}`}
-                                title="Toggle Inspector"
-                              >
-                                  <PanelRight className="w-4 h-4" />
-                              </button>
+                              <button onClick={() => setShowRightPanel(!showRightPanel)} className={`p-1.5 rounded hover:bg-slate-100 ${showRightPanel ? 'text-blue-600' : 'text-slate-400'}`}><PanelRight className="w-4 h-4" /></button>
                           </div>
                       )}
                   </div>
@@ -698,7 +533,6 @@ export const Aquarium: React.FC = () => {
                 onTouchStart={() => handleTouchStart('EMPTY', null)}
                 onTouchEnd={handleTouchEnd}
               >
-                  {/* Empty State */}
                   {rowItems.length === 0 && (
                       <div className="flex flex-col items-center justify-center h-full text-slate-300">
                           <FolderOpen className="w-16 h-16 mb-4 opacity-10" />
@@ -707,7 +541,6 @@ export const Aquarium: React.FC = () => {
                       </div>
                   )}
 
-                  {/* GRID VIEW */}
                   {viewMode === 'GRID' && (
                       <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                           {rowItems.map((item, index) => {
@@ -732,25 +565,16 @@ export const Aquarium: React.FC = () => {
                                       onTouchStart={(e) => handleTouchStart(item.kind === 'folder' ? 'FOLDER' : 'ASSET', item, e)}
                                       onTouchEnd={handleTouchEnd}
                                       className={`group p-4 rounded-xl border flex flex-col items-center text-center gap-3 cursor-pointer relative ${
-                                          isSelected
-                                          ? 'bg-blue-50 border-blue-400 ring-1 ring-blue-400 shadow-sm' 
-                                          : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                                          isSelected ? 'bg-blue-50 border-blue-400 ring-1 ring-blue-400 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300'
                                       }`}
                                   >
-                                      {/* Checkmark Overlay */}
                                       {isSelected && <div className="absolute top-2 right-2 text-blue-500"><CheckCircle2 className="w-4 h-4 fill-blue-100" /></div>}
-                                      
-                                      <div className={`w-12 h-12 flex items-center justify-center rounded-lg transition-colors ${item.kind === 'folder' ? 'text-blue-300' : ''} ${isSelected ? 'bg-white' : 'bg-slate-50 group-hover:bg-white'}`}>
-                                          {item.kind === 'folder' 
-                                            ? <FolderIcon className="w-12 h-12 fill-current" /> 
-                                            : getFileIcon((item as any).type, "w-6 h-6")
-                                          }
+                                      <div className={`w-12 h-12 flex items-center justify-center rounded-lg ${isSelected ? 'bg-white' : 'bg-slate-50 group-hover:bg-white'}`}>
+                                          {item.kind === 'folder' ? <FolderIcon className="w-12 h-12 text-blue-300 fill-current" /> : getFileIcon((item as any).type, "w-6 h-6")}
                                       </div>
                                       <div className="w-full">
                                           <div className={`text-xs font-medium truncate w-full ${isSelected ? 'text-blue-800' : 'text-slate-700'}`}>{item.name}</div>
-                                          <div className="text-[10px] text-slate-400 mt-0.5">
-                                              {item.kind === 'asset' ? formatSize((item as Asset).size) : 'Folder'}
-                                          </div>
+                                          <div className="text-[10px] text-slate-400 mt-0.5">{item.kind === 'asset' ? formatSize((item as Asset).size) : 'Folder'}</div>
                                       </div>
                                   </div>
                               );
@@ -758,7 +582,6 @@ export const Aquarium: React.FC = () => {
                       </div>
                   )}
 
-                  {/* LIST VIEW */}
                   {viewMode === 'LIST' && (
                       <table className="w-full text-left border-collapse min-w-[300px]">
                           <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider sticky top-0 z-10 border-b border-slate-200">
@@ -792,15 +615,10 @@ export const Aquarium: React.FC = () => {
                                           onContextMenu={(e) => handleContextMenu(e, item.kind === 'folder' ? 'FOLDER' : 'ASSET', item)}
                                           onTouchStart={(e) => handleTouchStart(item.kind === 'folder' ? 'FOLDER' : 'ASSET', item, e)}
                                           onTouchEnd={handleTouchEnd}
-                                          className={`cursor-pointer ${
-                                              isSelected ? 'bg-blue-50' : 'hover:bg-slate-50'
-                                          }`}
+                                          className={`cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
                                       >
                                           <td className="px-4 py-2 text-center">
-                                              {item.kind === 'folder' 
-                                                ? <FolderIcon className={`w-4 h-4 ${isSelected ? 'text-blue-500' : 'text-blue-300'} fill-current`} /> 
-                                                : getFileIcon((item as any).type, "w-4 h-4")
-                                              }
+                                              {item.kind === 'folder' ? <FolderIcon className={`w-4 h-4 ${isSelected ? 'text-blue-500' : 'text-blue-300'} fill-current`} /> : getFileIcon((item as any).type, "w-4 h-4")}
                                           </td>
                                           <td className={`px-4 py-2 font-bold ${isSelected ? 'text-blue-900' : 'text-slate-800'}`}>
                                               <div className="truncate max-w-[200px] md:max-w-xs">{item.name}</div>
@@ -816,37 +634,18 @@ export const Aquarium: React.FC = () => {
                   )}
               </div>
 
-              {/* Batch Action Bar (Snap-in) */}
+              {/* Batch Action Bar */}
               {selectedCount >= 2 && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-[#F8F9FA] border-t border-stone-300 p-3 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] flex items-center justify-between z-30 transition-none animate-none overflow-x-auto">
+                  <div className="absolute bottom-0 left-0 right-0 bg-[#F8F9FA] border-t border-stone-300 p-3 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] flex items-center justify-between z-30">
                       <div className="flex items-center gap-4 pl-2 shrink-0">
-                          <div className="bg-slate-200 text-slate-600 text-xs font-bold px-2 py-1 rounded border border-slate-300 whitespace-nowrap">
-                              {selectedCount} Items
-                          </div>
-                          <span className="text-xs text-slate-400 font-serif italic hidden sm:inline">Batch Selection Active</span>
+                          <div className="bg-slate-200 text-slate-600 text-xs font-bold px-2 py-1 rounded border border-slate-300">{selectedCount} Items</div>
                       </div>
-                      
                       <div className="flex items-center gap-2 shrink-0">
-                          <button onClick={() => setIsMoveModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-stone-300 text-slate-700 rounded shadow-sm hover:border-blue-400 hover:text-blue-600 text-xs font-bold uppercase tracking-wider">
-                              <ArrowRight className="w-3 h-3" /> Move
-                          </button>
-                          <button onClick={handleBulkDuplicate} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-stone-300 text-slate-700 rounded shadow-sm hover:border-blue-400 hover:text-blue-600 text-xs font-bold uppercase tracking-wider">
-                              <Copy className="w-3 h-3" /> Duplicate
-                          </button>
-                          <button onClick={handleBulkArchive} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-stone-300 text-slate-700 rounded shadow-sm hover:border-amber-400 hover:text-amber-600 text-xs font-bold uppercase tracking-wider">
-                              <Archive className="w-3 h-3" /> Archive
-                          </button>
-                          
+                          <button onClick={() => setIsMoveModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-stone-300 text-slate-700 rounded shadow-sm hover:border-blue-400 hover:text-blue-600 text-xs font-bold uppercase"><ArrowRight className="w-3 h-3" /> Move</button>
+                          <button onClick={handleBulkDuplicate} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-stone-300 text-slate-700 rounded shadow-sm hover:border-blue-400 hover:text-blue-600 text-xs font-bold uppercase"><Copy className="w-3 h-3" /> Duplicate</button>
+                          <button onClick={handleBulkArchive} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-stone-300 text-slate-700 rounded shadow-sm hover:border-amber-400 hover:text-amber-600 text-xs font-bold uppercase"><Archive className="w-3 h-3" /> Archive</button>
                           <div className="w-px h-6 bg-stone-300 mx-1"></div>
-                          
-                          <button 
-                            onClick={openDeleteModal}
-                            className="relative overflow-hidden flex items-center gap-2 px-3 py-1.5 rounded shadow-sm border text-xs font-bold uppercase tracking-wider transition-all duration-75 select-none bg-amber-50 border-amber-200 text-amber-900/50 hover:border-amber-300"
-                            title="SAFETY LOCK ENGAGED"
-                          >
-                              <Lock className="w-3 h-3" />
-                              <span>Purge</span>
-                          </button>
+                          <button onClick={() => setIsDeleteModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 rounded shadow-sm border text-xs font-bold uppercase bg-amber-50 border-amber-200 text-amber-900/50 hover:border-amber-300"><Lock className="w-3 h-3" /><span>Purge</span></button>
                       </div>
                   </div>
               )}
@@ -860,13 +659,9 @@ export const Aquarium: React.FC = () => {
                               <button onClick={() => setIsMoveModalOpen(false)}><X className="w-4 h-4 text-slate-400" /></button>
                           </div>
                           <div className="max-h-60 overflow-y-auto">
-                              <button onClick={() => handleBulkMoveConfirm(null)} className="w-full text-left px-4 py-2 hover:bg-blue-50 text-sm flex items-center gap-2 text-slate-600">
-                                  <FolderIcon className="w-4 h-4 text-blue-300" /> Root (Aquarium)
-                              </button>
+                              <button onClick={() => handleBulkMoveConfirm(null)} className="w-full text-left px-4 py-2 hover:bg-blue-50 text-sm flex items-center gap-2 text-slate-600"><FolderIcon className="w-4 h-4 text-blue-300" /> Root</button>
                               {folders?.map(f => (
-                                  <button key={f.id} onClick={() => handleBulkMoveConfirm(f.id!)} className="w-full text-left px-4 py-2 hover:bg-blue-50 text-sm flex items-center gap-2 text-slate-600">
-                                      <FolderIcon className="w-4 h-4 text-slate-400" /> {f.name}
-                                  </button>
+                                  <button key={f.id} onClick={() => handleBulkMoveConfirm(f.id!)} className="w-full text-left px-4 py-2 hover:bg-blue-50 text-sm flex items-center gap-2 text-slate-600"><FolderIcon className="w-4 h-4 text-slate-400" /> {f.name}</button>
                               ))}
                           </div>
                       </div>
@@ -874,96 +669,57 @@ export const Aquarium: React.FC = () => {
               )}
           </div>
 
-          {/* RIGHT: Inspector (Outrigger - Adaptive) */}
-          {/* Mobile/Tablet: Absolute Overlay / Desktop: Relative Col */}
-          <div className={`
-              bg-white border-l border-stone-200 flex flex-col shrink-0 h-full overflow-y-auto transition-all duration-300 shadow-xl
-              ${showRightPanel && selectedCount > 0 ? 'w-72 translate-x-0' : 'w-0 translate-x-full border-none'}
-              ${window.innerWidth < 1280 && showRightPanel && selectedCount > 0 ? 'absolute right-0 top-0 bottom-0 z-30' : 'relative'}
-          `}>
-              <div className="flex-shrink-0 flex items-center justify-between p-2 border-b border-slate-100 xl:hidden bg-slate-50">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 pl-2">Inspector</span>
-                  <button onClick={() => setShowRightPanel(false)}><X className="w-4 h-4 text-slate-400" /></button>
-              </div>
+          {/* RIGHT: Inspector - Conditional Render for Speed */}
+          {showRightPanel && selectedCount > 0 && (
+              <div className={`
+                  bg-white border-l border-stone-200 flex flex-col shrink-0 h-full overflow-y-auto w-72 shadow-xl
+                  ${window.innerWidth < 1280 ? 'absolute right-0 top-0 bottom-0 z-30' : 'relative'}
+              `}>
+                  <div className="flex-shrink-0 flex items-center justify-between p-2 border-b border-slate-100 xl:hidden bg-slate-50">
+                      <span className="text-[10px] font-bold uppercase text-slate-400 pl-2">Inspector</span>
+                      <button onClick={() => setShowRightPanel(false)}><X className="w-4 h-4 text-slate-400" /></button>
+                  </div>
 
-              {/* Single Asset Logic */}
-              {singleAsset && (
-                  <div className="min-w-[280px]">
-                      <div className="p-6 border-b border-stone-100 flex flex-col items-center text-center bg-slate-50/50">
-                          <div className="w-20 h-20 bg-white rounded-xl border border-slate-200 flex items-center justify-center mb-4 shadow-sm">
-                              {getFileIcon(singleAsset.type, "w-10 h-10")}
+                  {singleAsset ? (
+                      <div className="min-w-[280px]">
+                          <div className="p-6 border-b border-stone-100 flex flex-col items-center text-center bg-slate-50/50">
+                              <div className="w-20 h-20 bg-white rounded-xl border border-slate-200 flex items-center justify-center mb-4 shadow-sm">{getFileIcon(singleAsset.type, "w-10 h-10")}</div>
+                              <h3 className="font-serif font-bold text-slate-800 text-base leading-tight break-words w-full">{singleAsset.name}</h3>
+                              <span className="text-[10px] text-slate-400 mt-2 uppercase tracking-wider font-mono bg-slate-100 px-2 py-1 rounded">{singleAsset.type}</span>
                           </div>
-                          <h3 className="font-serif font-bold text-slate-800 text-base leading-tight break-words w-full">{singleAsset.name}</h3>
-                          <span className="text-[10px] text-slate-400 mt-2 uppercase tracking-wider font-mono bg-slate-100 px-2 py-1 rounded">
-                              {singleAsset.type}
-                          </span>
-                      </div>
-
-                      <div className="p-6 space-y-6">
-                          <div className="space-y-3">
-                              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Info</h4>
-                              <div className="grid grid-cols-2 gap-y-3 text-xs">
-                                  <div className="text-slate-500">Size</div>
-                                  <div className="text-slate-800 font-mono text-right">{formatSize(singleAsset.size)}</div>
-                                  
-                                  <div className="text-slate-500">Modified</div>
-                                  <div className="text-slate-800 font-mono text-right">{new Date(singleAsset.createdAt).toLocaleDateString()}</div>
-                                  
-                                  <div className="text-slate-500">Location</div>
-                                  <div className="text-slate-800 font-mono text-right truncate pl-2">{currentFolder ? currentFolder.name : 'Root'}</div>
+                          <div className="p-6 space-y-6">
+                              <div className="space-y-3">
+                                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1">Info</h4>
+                                  <div className="grid grid-cols-2 gap-y-3 text-xs">
+                                      <div className="text-slate-500">Size</div>
+                                      <div className="text-slate-800 font-mono text-right">{formatSize(singleAsset.size)}</div>
+                                      <div className="text-slate-500">Modified</div>
+                                      <div className="text-slate-800 font-mono text-right">{new Date(singleAsset.createdAt).toLocaleDateString()}</div>
+                                      <div className="text-slate-500">Location</div>
+                                      <div className="text-slate-800 font-mono text-right truncate pl-2">{currentFolder ? currentFolder.name : 'Root'}</div>
+                                  </div>
+                              </div>
+                              <div className="flex flex-col gap-2 pt-4">
+                                  <button onClick={() => setInspectAsset(singleAsset)} className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-md text-xs font-bold uppercase tracking-wider transition-colors shadow-sm flex items-center justify-center gap-2"><Info className="w-3 h-3" /> Open</button>
+                                  <button onClick={() => setIsDeleteModalOpen(true)} className="w-full py-2 bg-white border border-slate-200 hover:border-red-300 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-md text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"><Trash2 className="w-3 h-3" /> Delete</button>
                               </div>
                           </div>
-
-                          <div className="flex flex-col gap-2 pt-4">
-                              <button 
-                                  onClick={() => setInspectAsset(singleAsset)}
-                                  className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-md text-xs font-bold uppercase tracking-wider transition-colors shadow-sm flex items-center justify-center gap-2"
-                              >
-                                  <Info className="w-3 h-3" /> Open
-                              </button>
-                              <button 
-                                  onClick={openDeleteModal}
-                                  className="w-full py-2 bg-white border border-slate-200 hover:border-red-300 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-md text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-                              >
-                                  <Trash2 className="w-3 h-3" /> Delete
-                              </button>
-                          </div>
+                          {singleAsset.extractedText && (
+                              <div className="p-6 border-t border-stone-100 bg-slate-50/30 flex-1">
+                                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2"><FileText className="w-3 h-3" /> Content Preview</h4>
+                                  <p className="text-xs text-slate-600 font-mono leading-relaxed line-clamp-6 bg-white p-2 border border-slate-200 rounded">{singleAsset.extractedText}</p>
+                              </div>
+                          )}
                       </div>
-                      
-                      {singleAsset.extractedText && (
-                          <div className="p-6 border-t border-stone-100 bg-slate-50/30 flex-1">
-                              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                  <FileText className="w-3 h-3" /> Content Preview
-                              </h4>
-                              <p className="text-xs text-slate-600 font-mono leading-relaxed line-clamp-6 bg-white p-2 border border-slate-200 rounded">
-                                  {singleAsset.extractedText}
-                              </p>
-                          </div>
-                      )}
-                  </div>
-              )}
-
-              {/* Bulk Selection Summary */}
-              {selectedCount > 1 && (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 min-w-[280px]">
-                      <div className="w-20 h-20 bg-white border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center mb-4">
-                          <Layers className="w-8 h-8 text-slate-300" />
+                  ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 min-w-[280px]">
+                          <div className="w-20 h-20 bg-white border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center mb-4"><Layers className="w-8 h-8 text-slate-300" /></div>
+                          <h3 className="font-serif font-bold text-slate-800 text-lg">{selectedCount} Items Selected</h3>
+                          <p className="text-xs text-slate-500 mt-2 max-w-[200px]">Batch actions active.</p>
                       </div>
-                      <h3 className="font-serif font-bold text-slate-800 text-lg">{selectedCount} Items Selected</h3>
-                      <p className="text-xs text-slate-500 mt-2 max-w-[200px]">
-                          Batch actions active. Use the toolbar below to manage these items.
-                      </p>
-                  </div>
-              )}
-
-              {/* No Selection */}
-              {selectedCount === 0 && (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-slate-400 min-w-[280px]">
-                      <Info className="w-10 h-10 mb-2 opacity-20" />
-                      <p className="text-sm">Select an item to view details.</p>
-                  </div>
-              )}
-          </div>
+                  )}
+              </div>
+          )}
       </div>
     </div>
   );
