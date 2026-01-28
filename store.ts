@@ -26,6 +26,8 @@ interface ContextMenuState {
   items: ContextMenuItem[];
 }
 
+export type SignalMode = 'IDLE' | 'SYNCING' | 'PROCESSING' | 'ERROR' | 'SUCCESS';
+
 interface AppState {
   // Sidebar State
   sidebarState: SidebarState;
@@ -41,6 +43,14 @@ interface AppState {
   // Settings Modal State
   isSettingsOpen: boolean;
   setSettingsOpen: (isOpen: boolean) => void;
+
+  // The Depths State (Global Modal)
+  isDepthsOpen: boolean;
+  setDepthsOpen: (isOpen: boolean) => void;
+
+  // Global Sync State (The Signal Lamp)
+  signalMode: SignalMode;
+  setSignalMode: (mode: SignalMode) => void;
 
   // Context Menu State (Global)
   contextMenu: ContextMenuState;
@@ -345,6 +355,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   isSettingsOpen: false,
   setSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
+
+  isDepthsOpen: false,
+  setDepthsOpen: (isOpen) => set({ isDepthsOpen: isOpen }),
+
+  signalMode: 'IDLE',
+  setSignalMode: (mode) => set({ signalMode: mode }),
 
   contextMenu: { isOpen: false, x: 0, y: 0, items: [] },
   openContextMenu: (payload) => set({ contextMenu: { isOpen: true, ...payload } }),

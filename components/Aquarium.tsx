@@ -82,6 +82,12 @@ export const Aquarium: React.FC = () => {
   const [showLeftPanel, setShowLeftPanel] = useState(window.innerWidth >= 768);
   const [showRightPanel, setShowRightPanel] = useState(false); // Default closed for speed
 
+  // Virtualization State
+  const [scrollTop, setScrollTop] = useState(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const ROW_HEIGHT = 48; // Mechanical Lock: 48px per row
+  const OVERSCAN = 5;    // Buffer rows
+
   // Modal State
   const [isNewFolderOpen, setIsNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -114,13 +120,18 @@ export const Aquarium: React.FC = () => {
       }
   }, [selection]);
 
+  // Handle Scroll for Virtualization
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+      setScrollTop(e.currentTarget.scrollTop);
+  };
+
   // Data Fetching
   const folders = useLiveQuery(() => db.folders.toArray());
   const assets = useLiveQuery(() => db.assets.filter(a => !a.deletedAt).toArray());
 
   const currentFolder = folders?.find(f => f.id === currentFolderId);
 
-  // Memoized List
+  // Memoized List & Virtualization Math
   const rowItems = useMemo(() => {
       const visibleFolders = currentFolderId === null 
         ? (folders?.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase())) || [])
@@ -143,8 +154,16 @@ export const Aquarium: React.FC = () => {
       ];
   }, [folders, assets, currentFolderId, searchQuery]);
 
+  // Virtualization Calculations
+  const totalListHeight = rowItems.length * ROW_HEIGHT;
+  const viewportHeight = scrollContainerRef.current?.clientHeight || 800;
+  const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
+  const endIndex = Math.min(rowItems.length, Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT) + OVERSCAN);
+  const visibleListItems = rowItems.slice(startIndex, endIndex);
+
   // Selection Logic
   const handleSelection = (e: React.MouseEvent, key: string, index: number) => {
+      e.stopPropagation(); // Prevent container click
       let newSet = new Set(e.ctrlKey || e.metaKey ? selection : []);
       
       if (e.shiftKey && lastSelectedIndex !== -1) {
@@ -525,13 +544,26 @@ export const Aquarium: React.FC = () => {
                   </div>
               </div>
 
-              {/* Content Area */}
+              {/* LIST VIEW HEADER (Sticky, outside scroll container) */}
+              {viewMode === 'LIST' && rowItems.length > 0 && (
+                  <div className="flex items-center bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider border-b border-slate-200 h-8 shrink-0">
+                      <div className="w-12 text-center">Type</div>
+                      <div className="flex-1 px-4">Name</div>
+                      <div className="w-32 hidden md:block px-4">Date Modified</div>
+                      <div className="w-24 hidden lg:block px-4">Type</div>
+                      <div className="w-24 text-right hidden sm:block px-4">Size</div>
+                  </div>
+              )}
+
+              {/* Content Area - Virtualized Scroll Container */}
               <div 
-                className="flex-1 overflow-y-auto custom-scrollbar bg-white pb-16 relative" 
+                ref={scrollContainerRef}
+                className="flex-1 overflow-y-auto custom-scrollbar bg-white relative" 
                 onClick={() => clearSelection()}
                 onContextMenu={(e) => handleContextMenu(e, 'EMPTY')}
                 onTouchStart={() => handleTouchStart('EMPTY', null)}
                 onTouchEnd={handleTouchEnd}
+                onScroll={handleScroll}
               >
                   {rowItems.length === 0 && (
                       <div className="flex flex-col items-center justify-center h-full text-slate-300">
@@ -582,55 +614,72 @@ export const Aquarium: React.FC = () => {
                       </div>
                   )}
 
-                  {viewMode === 'LIST' && (
-                      <table className="w-full text-left border-collapse min-w-[300px]">
-                          <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider sticky top-0 z-10 border-b border-slate-200">
-                              <tr>
-                                  <th className="px-4 py-2 w-8"></th>
-                                  <th className="px-4 py-2">Name</th>
-                                  <th className="px-4 py-2 w-32 hidden md:table-cell">Date Modified</th>
-                                  <th className="px-4 py-2 w-24 hidden lg:table-cell">Type</th>
-                                  <th className="px-4 py-2 w-24 text-right hidden sm:table-cell">Size</th>
-                              </tr>
-                          </thead>
-                          <tbody className="text-xs text-slate-700 font-mono divide-y divide-slate-100">
-                              {rowItems.map((item, index) => {
-                                  const isSelected = selection.has(item.key);
-                                  return (
-                                      <tr 
-                                          key={item.key}
-                                          draggable
-                                          onDragStart={(e) => handleDragStart(e, item.key)}
-                                          onDragOver={(e) => item.kind === 'folder' ? e.preventDefault() : undefined}
-                                          onDrop={(e) => item.kind === 'folder' ? handleDropOnFolder(e, item.id!) : undefined}
-                                          onClick={(e) => handleSelection(e, item.key, index)}
-                                          onDoubleClick={() => {
-                                              if (item.kind === 'folder') {
-                                                  setCurrentFolderId(item.id!);
-                                                  clearSelection();
-                                              } else {
-                                                  setInspectAsset(item as Asset);
-                                              }
-                                          }}
-                                          onContextMenu={(e) => handleContextMenu(e, item.kind === 'folder' ? 'FOLDER' : 'ASSET', item)}
-                                          onTouchStart={(e) => handleTouchStart(item.kind === 'folder' ? 'FOLDER' : 'ASSET', item, e)}
-                                          onTouchEnd={handleTouchEnd}
-                                          className={`cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
-                                      >
-                                          <td className="px-4 py-2 text-center">
-                                              {item.kind === 'folder' ? <FolderIcon className={`w-4 h-4 ${isSelected ? 'text-blue-500' : 'text-blue-300'} fill-current`} /> : getFileIcon((item as any).type, "w-4 h-4")}
-                                          </td>
-                                          <td className={`px-4 py-2 font-bold ${isSelected ? 'text-blue-900' : 'text-slate-800'}`}>
-                                              <div className="truncate max-w-[200px] md:max-w-xs">{item.name}</div>
-                                          </td>
-                                          <td className="px-4 py-2 text-slate-500 hidden md:table-cell">{new Date(item.createdAt).toLocaleDateString()}</td>
-                                          <td className="px-4 py-2 text-slate-400 truncate max-w-[100px] hidden lg:table-cell">{item.kind === 'asset' ? (item as Asset).type.split('/')[1] : 'Folder'}</td>
-                                          <td className="px-4 py-2 text-right text-slate-500 hidden sm:table-cell">{item.kind === 'asset' ? formatSize((item as Asset).size) : '--'}</td>
-                                      </tr>
-                                  );
-                              })}
-                          </tbody>
-                      </table>
+                  {/* VIRTUALIZED LIST VIEW ENGINE */}
+                  {viewMode === 'LIST' && rowItems.length > 0 && (
+                      <div 
+                        className="relative w-full"
+                        style={{ height: `${totalListHeight}px` }}
+                      >
+                          {visibleListItems.map((item, index) => {
+                              const actualIndex = startIndex + index;
+                              const isSelected = selection.has(item.key);
+                              
+                              return (
+                                  <div 
+                                      key={item.key}
+                                      className={`
+                                        absolute top-0 left-0 w-full h-[48px] flex items-center text-xs border-b border-slate-50 hover:bg-slate-50 cursor-pointer select-none transition-colors
+                                        ${isSelected ? 'bg-blue-50 border-blue-100 text-blue-900 font-bold' : 'text-slate-700'}
+                                      `}
+                                      style={{ transform: `translateY(${actualIndex * ROW_HEIGHT}px)` }}
+                                      draggable
+                                      onDragStart={(e) => handleDragStart(e, item.key)}
+                                      onDragOver={(e) => item.kind === 'folder' ? e.preventDefault() : undefined}
+                                      onDrop={(e) => item.kind === 'folder' ? handleDropOnFolder(e, item.id!) : undefined}
+                                      onClick={(e) => handleSelection(e, item.key, actualIndex)}
+                                      onDoubleClick={() => {
+                                          if (item.kind === 'folder') {
+                                              setCurrentFolderId(item.id!);
+                                              clearSelection();
+                                          } else {
+                                              setInspectAsset(item as Asset);
+                                          }
+                                      }}
+                                      onContextMenu={(e) => handleContextMenu(e, item.kind === 'folder' ? 'FOLDER' : 'ASSET', item)}
+                                      onTouchStart={(e) => handleTouchStart(item.kind === 'folder' ? 'FOLDER' : 'ASSET', item, e)}
+                                      onTouchEnd={handleTouchEnd}
+                                  >
+                                      {/* Icon Column */}
+                                      <div className="w-12 flex justify-center shrink-0">
+                                          {item.kind === 'folder' 
+                                            ? <FolderIcon className={`w-4 h-4 ${isSelected ? 'text-blue-500' : 'text-blue-300'} fill-current`} /> 
+                                            : getFileIcon((item as any).type, "w-4 h-4")
+                                          }
+                                      </div>
+                                      
+                                      {/* Name Column */}
+                                      <div className="flex-1 px-4 truncate font-medium">
+                                          {item.name}
+                                      </div>
+                                      
+                                      {/* Date Column */}
+                                      <div className="w-32 px-4 hidden md:block text-slate-400 font-mono text-[10px]">
+                                          {new Date(item.createdAt).toLocaleDateString()}
+                                      </div>
+                                      
+                                      {/* Type Column */}
+                                      <div className="w-24 px-4 hidden lg:block text-slate-400 truncate uppercase text-[9px] font-bold">
+                                          {item.kind === 'asset' ? (item as Asset).type.split('/')[1] : 'FOLDER'}
+                                      </div>
+                                      
+                                      {/* Size Column */}
+                                      <div className="w-24 px-4 hidden sm:block text-right text-slate-400 font-mono text-[10px]">
+                                          {item.kind === 'asset' ? formatSize((item as Asset).size) : '--'}
+                                      </div>
+                                  </div>
+                              );
+                          })}
+                      </div>
                   )}
               </div>
 

@@ -346,6 +346,54 @@
         letter-spacing: 0.05em;
         color: #3b82f6;
       }
+
+      /* Signal Lamp Animations - Neural Link */
+      @keyframes pulseSignal {
+        0% { background-color: #3d3011; box-shadow: inset 0 1px 2px rgba(0,0,0,0.8); }
+        50% { background-color: #ffbf00; box-shadow: 0 0 5px #ffbf00, inset 0 0 2px #ffbf00; }
+        100% { background-color: #3d3011; box-shadow: inset 0 1px 2px rgba(0,0,0,0.8); }
+      }
+      
+      /* High-speed flicker for typing */
+      @keyframes flickerSignal {
+        0% { opacity: 0.8; background-color: #ffd700; }
+        25% { opacity: 0.4; background-color: #fff4d1; }
+        50% { opacity: 1; background-color: #ffd700; }
+        75% { opacity: 0.6; background-color: #fff4d1; }
+        100% { opacity: 0.8; background-color: #ffd700; }
+      }
+
+      .signal-lamp {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        border: 1px solid #786c48; /* Brass rim */
+        background-color: #3d3011; /* Dark Brass Idle */
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.2);
+        transition: background-color 0.1s, box-shadow 0.1s;
+        transform: translateZ(0); /* Hardware acceleration */
+      }
+      .signal-lamp.syncing {
+        animation: pulseSignal 1.5s infinite ease-in-out;
+        border-color: #ffbf00;
+      }
+      .signal-lamp.processing {
+        animation: flickerSignal 0.1s infinite;
+        border-color: #fff;
+        box-shadow: 0 0 5px #ffd700;
+      }
+      .signal-lamp.success {
+        background-color: #ffd700;
+        box-shadow: 0 0 8px #ffd700, inset 0 0 2px #ffd700;
+        border-color: #ffd700;
+        animation: none;
+      }
+      .signal-lamp.error {
+        background-color: #8b0000;
+        box-shadow: inset 0 0 4px #000;
+        border-color: #500;
+        animation: none;
+      }
     </style>
   <script type="importmap">
 {

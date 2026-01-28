@@ -33,6 +33,7 @@ import { CaptainInteractionLayer } from './components/CaptainInteractionLayer';
 import { DeployNetButton } from './components/DeployNetButton';
 import { HookDeck } from './components/HookDeck';
 import { GlobalContextMenu } from './components/GlobalContextMenu';
+import { TheDepths } from './components/TheDepths'; // Imported Global Modal
 import { ViewState, CrewStatus, FlareType, WeatherCondition } from './types';
 import { Search, SplitSquareHorizontal, Minimize2, X, Compass, Users, MapPin, CloudRain, AlertTriangle, Siren, Grid, Clock, Radio, Activity, Waves } from 'lucide-react';
 import { useAppStore } from './store';
@@ -240,6 +241,8 @@ export const App = () => {
   const setSonarOpen = useAppStore(state => state.setSonarOpen);
   const [showDailyCatch, setShowDailyCatch] = useState(false);
   const [isDevOverlayActive, setIsDevOverlayActive] = useState(false);
+  const isDepthsOpen = useAppStore(state => state.isDepthsOpen);
+  const setDepthsOpen = useAppStore(state => state.setDepthsOpen);
   
   // Heading State (Dynamic)
   const [heading, setHeading] = useState(340);
@@ -301,11 +304,6 @@ export const App = () => {
   const activeSession = useLiveQuery(() => db.sessions.where('endTime').equals(0).first());
 
   useEffect(() => {
-    // Check if morning cast is enabled
-    const morningCast = localStorage.getItem('tackle_morning_cast');
-    if (morningCast === 'true') {
-      setShowDailyCatch(true);
-    }
     // Initial Sunset Check
     checkSunset();
   }, [checkSunset]);
@@ -539,6 +537,9 @@ export const App = () => {
       {showDailyCatch && <DailyCatch onComplete={() => setShowDailyCatch(false)} />}
       <TheBuoy />
       <ScriptLure />
+      
+      {/* The Depths Portal - Now Elevated Above Deck */}
+      <TheDepths isOpen={isDepthsOpen} onClose={() => setDepthsOpen(false)} />
 
       {/* THE GAPLESS HULL: Snap-to-Rail Architecture */}
       <div className={`flex w-full h-full shadow-2xl relative bridge-hull bg-transparent z-10 ${layoutMode === 'FULL_HULL' ? 'max-w-[1440px] mx-auto border-x border-stone-300' : 'w-full'}`}>

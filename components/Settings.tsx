@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   ChevronRight, 
   Settings as SettingsIcon, 
@@ -65,23 +65,71 @@ import { NotificationManager } from '../utils/notifications';
 import { UserRole, MapStyle, CompassMode, Contact } from '../types';
 import { AnimatePresence, motion } from 'framer-motion';
 
+// --- MAIN WRAPPER COMPONENT ---
+// This component remains mounted but is extremely lightweight.
+// It acts as the airlock, only admitting the heavy "SettingsContent" when opened.
 export const Settings: React.FC = () => {
   const isSettingsOpen = useAppStore(state => state.isSettingsOpen);
   const setSettingsOpen = useAppStore(state => state.setSettingsOpen);
   const sidebarState = useAppStore(state => state.sidebarState);
-  
+
+  // Anchoring Calculation: Strictly flush to rail
+  const getLeftOffset = () => {
+      switch(sidebarState) {
+          case 'full': return '260px'; 
+          case 'mini': return '68px';
+          case 'hidden': return '0px'; 
+          default: return '260px';
+      }
+  };
+
+  const handleClose = () => {
+      setSettingsOpen(false);
+  };
+
+  return (
+    <AnimatePresence>
+      {isSettingsOpen && (
+        <>
+          {/* Dimmer (Night Watch) */}
+          <motion.div 
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[998]"
+              onClick={handleClose}
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0 }}
+          />
+          
+          {/* Anchored Settings Deck */}
+          <motion.div 
+              style={{ left: getLeftOffset() }}
+              className="fixed top-0 bottom-0 w-[320px] z-[999] bg-[#fdfbf7]/90 backdrop-blur-sm shadow-2xl border-r border-y border-slate-200/50 rounded-r-2xl overflow-hidden flex flex-col pointer-events-auto"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ duration: 0 }}
+          >
+              <SettingsContent onClose={handleClose} />
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
+
+// --- HEAVY CONTENT COMPONENT ---
+// This only mounts when the user actually opens settings.
+// All useLiveQuery and heavy store subscriptions happen here.
+const SettingsContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [activePath, setActivePath] = useState<string[]>([]);
+  
+  // Data Fetching (Only runs when open now)
   const snapshots = useLiveQuery(() => db.snapshots.orderBy('timestamp').reverse().toArray());
-  const [morningCastEnabled, setMorningCastEnabled] = useState(false);
   const contacts = useLiveQuery(() => db.contacts.toArray());
   
   // Store Hooks
-  const quietMode = useAppStore(state => state.quietMode);
-  const toggleQuietMode = useAppStore(state => state.toggleQuietMode);
-  const toggleSidebar = useAppStore(state => state.toggleSidebar);
-  
   const userRole = useAppStore(state => state.userRole);
-  const setUserRole = useAppStore(state => state.setUserRole);
   const notificationSettings = useAppStore(state => state.notificationSettings);
   const updateNotificationSettings = useAppStore(state => state.updateNotificationSettings);
 
@@ -137,12 +185,6 @@ export const Settings: React.FC = () => {
   const cabinMode = useAppStore(state => state.cabinMode);
   const toggleCabinMode = useAppStore(state => state.toggleCabinMode);
   
-  // Theme & Accessibility
-  const themeMode = useAppStore(state => state.themeMode);
-  const setThemeMode = useAppStore(state => state.setThemeMode);
-  const highContrastMode = useAppStore(state => state.highContrastMode);
-  const setHighContrastMode = useAppStore(state => state.setHighContrastMode);
-  
   // Location
   const locationEnabled = useAppStore(state => state.locationEnabled);
   const setLocationEnabled = useAppStore(state => state.setLocationEnabled);
@@ -150,17 +192,6 @@ export const Settings: React.FC = () => {
   // SOS
   const sosLatchEnabled = useAppStore(state => state.sosLatchEnabled);
   const setSosLatchEnabled = useAppStore(state => state.setSosLatchEnabled);
-
-  useEffect(() => {
-    const pref = localStorage.getItem('tackle_morning_cast');
-    setMorningCastEnabled(pref === 'true');
-  }, []);
-
-  const toggleMorningCast = () => {
-    const newValue = !morningCastEnabled;
-    setMorningCastEnabled(newValue);
-    localStorage.setItem('tackle_morning_cast', String(newValue));
-  };
 
   const toggleNotifications = async () => {
     if (!notificationSettings.enabled) {
@@ -187,10 +218,6 @@ export const Settings: React.FC = () => {
     setActivePath(activePath.slice(0, -1));
   };
 
-  const handleClose = () => {
-      setSettingsOpen(false);
-  };
-
   const getRoleLabel = (role: string | null) => {
       switch(role) {
           case 'PLANNER': return 'Navigator';
@@ -206,16 +233,6 @@ export const Settings: React.FC = () => {
       }
   }
 
-  // Anchoring Calculation: Strictly flush to rail
-  const getLeftOffset = () => {
-      switch(sidebarState) {
-          case 'full': return '260px'; 
-          case 'mini': return '68px';
-          case 'hidden': return '0px'; 
-          default: return '260px';
-      }
-  };
-
   const renderContent = () => {
     const currentLevel = activePath[activePath.length - 1];
 
@@ -223,34 +240,8 @@ export const Settings: React.FC = () => {
       // Root Settings
       return (
         <div className="space-y-4 pb-10">
-           {/* Console Controls */}
-           <div className="grid grid-cols-1 gap-4 p-4 bg-slate-50/50 rounded-xl border border-slate-200/60">
-             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Deck Controls</h3>
-             
-             <TactileToggle 
-               label="Morning Cast" 
-               description="Guided launch sequence"
-               active={morningCastEnabled} 
-               onToggle={toggleMorningCast}
-               icon={Sun}
-             />
-             
-             <TactileToggle 
-               label="No-Wake Zone" 
-               description="Silence signals & dim lights"
-               active={quietMode} 
-               onToggle={toggleQuietMode}
-               icon={Moon}
-             />
-             
-             <TactileToggle 
-               label="Clear Deck" 
-               description="Hide Sidebar"
-               active={sidebarState === 'hidden'} 
-               onToggle={toggleSidebar}
-               icon={PanelLeft}
-             />
-           </div>
+           
+           {/* Deck Controls removed per "Lightweight Hull" Directive */}
 
            <div className="space-y-1 ship-systems-list">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2 mt-4">The Engine Room</h3>
@@ -264,8 +255,7 @@ export const Settings: React.FC = () => {
             <SettingItem icon={PenTool} label="Vessel Customization" onClick={() => navigate('customization')} />
             <SettingItem icon={Wrench} label="Experimental Features" onClick={() => navigate('experimental')} />
             
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2 mt-4">Below Deck</h3>
-            <SettingItem icon={Contrast} label="Visual Accessibility" onClick={() => navigate('visuals')} />
+            {/* Visuals removed - Theme Locked to Classic Paper */}
 
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2 mt-4">System Instruments</h3>
             <SettingItem icon={Bell} label="Bridge Alerts" value={notificationSettings.enabled ? 'On' : 'Off'} onClick={() => navigate('notifications')} />
@@ -312,34 +302,6 @@ export const Settings: React.FC = () => {
                                 </button>
                             </div>
                         )}
-                    </PaperCard>
-                </div>
-            </div>
-        )
-    }
-
-    if (currentLevel === 'visuals') {
-        return (
-            <div className="space-y-6">
-                <Header onBack={goBack} title="Visual Accessibility" />
-                <div className="px-4 space-y-4">
-                    <PaperCard title="Vision Modes">
-                        <div className="space-y-4">
-                            <TactileToggle 
-                                label="Midnight Watch" 
-                                description="Invert to Dark Mode for night voyages."
-                                active={themeMode === 'MIDNIGHT'} 
-                                onToggle={() => setThemeMode(themeMode === 'PAPER' ? 'MIDNIGHT' : 'PAPER')}
-                                icon={MoonIcon}
-                            />
-                            <TactileToggle 
-                                label="Storm Vision" 
-                                description="High contrast lines and bolder text."
-                                active={highContrastMode} 
-                                onToggle={() => setHighContrastMode(!highContrastMode)}
-                                icon={Eye}
-                            />
-                        </div>
                     </PaperCard>
                 </div>
             </div>
@@ -810,53 +772,29 @@ export const Settings: React.FC = () => {
   };
 
   return (
-    <AnimatePresence>
-      {isSettingsOpen && (
-        <>
-          {/* Dimmer (Night Watch) - Behind everything interactive except sidebar */}
-          <motion.div 
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[998]"
-              onClick={handleClose}
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0 }}
-          />
-          
-          {/* Anchored Settings Deck (Pneumatic Slide) - Behind Sidebar, Above Dimmer */}
-          <motion.div 
-              style={{ left: getLeftOffset() }}
-              className="fixed top-0 bottom-0 w-[320px] z-[999] bg-[#fdfbf7]/90 backdrop-blur-sm shadow-2xl border-r border-y border-slate-200/50 rounded-r-2xl overflow-hidden flex flex-col pointer-events-auto"
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ duration: 0 }}
+    <>
+      {/* Brass Close Latch - Always visible inside content */}
+      <div className="absolute top-4 right-4 z-50">
+          <button 
+              onClick={onClose}
+              className="w-10 h-10 rounded-full flex items-center justify-center shadow-md border border-amber-900/30 bg-gradient-to-br from-[#fcd34d] via-[#b45309] to-[#78350f] hover:brightness-110 active:scale-95 group"
+              title="Close Settings Deck"
           >
-              {/* Brass Close Latch */}
-              <div className="absolute top-4 right-4 z-50">
-                  <button 
-                      onClick={handleClose}
-                      className="w-10 h-10 rounded-full flex items-center justify-center shadow-md border border-amber-900/30 bg-gradient-to-br from-[#fcd34d] via-[#b45309] to-[#78350f] hover:brightness-110 active:scale-95 group"
-                      title="Close Settings Deck"
-                  >
-                      <X className="w-5 h-5 text-slate-900 group-hover:text-black" />
-                      {/* Shine Effect */}
-                      <div className="absolute top-1 left-2 w-3 h-2 bg-white/40 rounded-full blur-[1px]"></div>
-                  </button>
-              </div>
+              <X className="w-5 h-5 text-slate-900 group-hover:text-black" />
+              {/* Shine Effect */}
+              <div className="absolute top-1 left-2 w-3 h-2 bg-white/40 rounded-full blur-[1px]"></div>
+          </button>
+      </div>
 
-              <header className="px-8 py-6 border-b border-slate-200/50 bg-white/40 shrink-0 mt-2">
-                  <h2 className="text-2xl font-bold text-slate-800 font-serif">Settings Deck</h2>
-                  <p className="text-slate-500 text-sm font-sans">Configure your tackle box.</p>
-              </header>
+      <header className="px-8 py-6 border-b border-slate-200/50 bg-white/40 shrink-0 mt-2">
+          <h2 className="text-2xl font-bold text-slate-800 font-serif">Settings Deck</h2>
+          <p className="text-slate-500 text-sm font-sans">Configure your tackle box.</p>
+      </header>
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar relative">
-                  {renderContent()}
-              </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+      <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+          {renderContent()}
+      </div>
+    </>
   );
 };
 
@@ -959,19 +897,6 @@ const PaperCard: React.FC<{ title: string, children: React.ReactNode }> = ({ tit
         <div className="absolute top-0 right-0 w-8 h-8 bg-gradient-to-bl from-stone-200 to-transparent opacity-50"></div>
         <h4 className="font-serif font-bold text-slate-800 mb-4 text-sm uppercase tracking-wider border-b border-stone-200 pb-2">{title}</h4>
         {children}
-    </div>
-);
-
-const RoleCard: React.FC<{ role: UserRole, label: string, desc: string, currentRole: UserRole | null, onSelect: (r: UserRole) => void }> = ({ role, label, desc, currentRole, onSelect }) => (
-    <div 
-        onClick={() => onSelect(role)}
-        className={`p-4 rounded-xl border cursor-pointer flex items-center justify-between ${currentRole === role ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md' : 'bg-transparent border-slate-400 hover:bg-slate-50'}`}
-    >
-        <div>
-            <h4 className={`font-bold ${currentRole === role ? 'text-slate-900' : 'text-slate-700'}`}>{label}</h4>
-            <p className="text-xs text-slate-500 mt-1">{desc}</p>
-        </div>
-        {currentRole === role && <div className="bg-emerald-500 text-white p-1 rounded-full"><Check className="w-4 h-4" /></div>}
     </div>
 );
 

@@ -42,7 +42,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store';
 import { FeedbackBottle } from './FeedbackBottle';
 import { VesselFlag } from './VesselFlag';
-import { TheDepths } from './TheDepths';
 import { db } from '../db';
 import { NotificationManager } from '../utils/notifications';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -60,15 +59,53 @@ const IconMap: Record<string, React.FC<any>> = {
   Inbox,
   CheckSquare,
   Calendar,
-  FileText,
-  Terminal,
+  FileText, 
+  Terminal, 
   Settings,
   Waves, 
   Users
 };
 
-// Knot Meter Component with Signal Translation Protocol
-const KnotMeter = () => {
+// Signal Lamp Component - The Brass Sync Indicator
+const SignalLamp: React.FC = () => {
+    const signalMode = useAppStore(state => state.signalMode);
+    const setSignalMode = useAppStore(state => state.setSignalMode);
+    const [cssClass, setCssClass] = useState('idle');
+
+    useEffect(() => {
+        switch (signalMode) {
+            case 'IDLE': setCssClass('idle'); break;
+            case 'SYNCING': setCssClass('syncing'); break;
+            case 'PROCESSING': setCssClass('processing'); break;
+            case 'ERROR': setCssClass('error'); break;
+            case 'SUCCESS': 
+                setCssClass('success'); 
+                // Auto-reset success to idle after flash
+                setTimeout(() => setSignalMode('IDLE'), 800);
+                break;
+        }
+    }, [signalMode, setSignalMode]);
+
+    const getTooltip = () => {
+        switch(signalMode) {
+            case 'SYNCING': return 'Link: Syncing Data...';
+            case 'PROCESSING': return 'Link: Thinking...';
+            case 'ERROR': return 'Link: Dead End';
+            case 'SUCCESS': return 'Link: Data Secured';
+            default: return 'Link: Idle';
+        }
+    }
+
+    return (
+        <div 
+            className={`signal-lamp ${cssClass}`} 
+            title={getTooltip()}
+        ></div>
+    );
+};
+
+// Knot Meter Component with Stealth Throttling
+const KnotMeter: React.FC<{ isRailActive: boolean }> = ({ isRailActive }) => {
     const isSubmerged = useAppStore(state => state.isSubmerged);
     const isDragDetected = useAppStore(state => state.isDragDetected); // Now driven by App.tsx
     const isDrifting = useAppStore(state => state.isDrifting);
@@ -81,15 +118,19 @@ const KnotMeter = () => {
     const dragPenalty = isDragDetected ? 4.0 : 0;
 
     useEffect(() => {
-        // Reduced frequency for performance (Hull Scraping)
+        // Stealth Protocol: Throttle to 500ms when rail is idle, 100ms when active/hovered
+        const intervalDelay = isRailActive ? 100 : 500;
+
         const renderLoop = setInterval(() => {
              // Logic update
              let baseMax = (baseSpeed + 6.5) - dragPenalty;
              
-             // Natural Fluctuation
-             if (Math.random() > 0.8) {
+             // Natural Fluctuation (Reduced entropy when idle to save CPU)
+             const entropy = isRailActive ? Math.random() : 0.5;
+
+             if (entropy > 0.8) {
                  targetSpeed.current = Math.min(targetSpeed.current + 0.3, baseMax);
-             } else if (Math.random() > 0.8) {
+             } else if (entropy > 0.8) {
                  let baseMin = (baseSpeed + 1.0) - dragPenalty;
                  if (targetSpeed.current <= baseMin) {
                      targetSpeed.current = (baseSpeed - dragPenalty) + (Math.random() * 0.8);
@@ -100,14 +141,14 @@ const KnotMeter = () => {
              setSpeed(prev => {
                 const diff = targetSpeed.current - prev;
                 if (Math.abs(diff) < 0.05) return prev;
-                return prev + diff * 0.1; // Slower easing
+                return prev + diff * (isRailActive ? 0.2 : 0.5); // Snap faster when idle to avoid jank
             });
-        }, 200); // 200ms throttle (was 50ms)
+        }, intervalDelay);
 
         return () => {
             clearInterval(renderLoop);
         }
-    }, [dragPenalty, baseSpeed]);
+    }, [dragPenalty, baseSpeed, isRailActive]);
 
     // Signal Translation Protocol
     let signal = 'HEAVY SEAS';
@@ -145,7 +186,7 @@ const KnotMeter = () => {
                     </span>
                  </span>
             </div>
-            {isDragDetected && !isDrifting && (
+            {isDragDetected && !isDrifting && isRailActive && (
                 <span className="text-[9px] text-red-500 font-bold uppercase tracking-wider animate-pulse">
                     RESISTANCE DETECTED
                 </span>
@@ -153,6 +194,34 @@ const KnotMeter = () => {
         </div>
     )
 }
+
+// Crew Selector (Lazy Loaded)
+const CrewSelector: React.FC<{ onSelect: (contact: Contact) => void, onClose: () => void }> = ({ onSelect, onClose }) => {
+    const contacts = useLiveQuery(() => db.contacts.toArray());
+    
+    return (
+        <div className="absolute top-0 left-0 w-full transform -translate-y-full pb-2 z-50">
+            <div className="bg-white border border-stone-200 rounded-lg shadow-xl overflow-hidden">
+                <div className="p-2 border-b border-stone-100 flex justify-between items-center bg-stone-50">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 font-serif">Crew</span>
+                    <button onClick={onClose}><XIcon className="w-3 h-3 text-slate-400" /></button>
+                </div>
+                <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                    {contacts?.map(c => (
+                        <div 
+                        key={c.id} 
+                        onClick={() => onSelect(c)}
+                        className="p-2 hover:bg-blue-50 cursor-pointer text-xs font-medium text-slate-700 flex items-center gap-2 border-b border-stone-50 last:border-0"
+                        >
+                            <div className={`w-2 h-2 rounded-full ${c.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                            {c.name}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   currentView, 
@@ -173,6 +242,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const setConfirmingBreak = useAppStore(state => state.setConfirmingBreak);
   const setSettingsOpen = useAppStore(state => state.setSettingsOpen);
   const isSettingsOpen = useAppStore(state => state.isSettingsOpen);
+  const setDepthsOpen = useAppStore(state => state.setDepthsOpen);
   
   const isChatOpen = useAppStore(state => state.isChatOpen);
   const setChatOpen = useAppStore(state => state.setChatOpen);
@@ -181,12 +251,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [navItems, setNavItems] = useState<NavItem[]>(DEFAULT_NAV_ITEMS);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [isBottleOpen, setIsBottleOpen] = useState(false);
-  const [isDepthsOpen, setIsDepthsOpen] = useState(false);
   const [showHookSelector, setShowHookSelector] = useState(false);
   
-  // Queries
+  // Rail Activity State (Stealth Mode)
+  const [isRailActive, setIsRailActive] = useState(false);
+  
+  // Queries - Only query singular hook contact if needed
   const hookedContact = useLiveQuery(() => hookedContactId ? db.contacts.get(hookedContactId) : Promise.resolve(undefined), [hookedContactId]);
-  const contacts = useLiveQuery(() => db.contacts.toArray());
 
   // Resizing State
   const [isResizing, setIsResizing] = useState(false);
@@ -197,6 +268,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isHolding, setIsHolding] = useState(false);
   const holdIntervalRef = useRef<number | null>(null);
   const HOLD_DURATION = 3000; // 3 seconds
+
+  // Simulate Background Sync (The Silent Courier) - Global Engine
+  const setSignalMode = useAppStore(state => state.setSignalMode);
+  useEffect(() => {
+      const syncInterval = setInterval(() => {
+          setSignalMode('SYNCING');
+          // Simulate fetch delay
+          setTimeout(() => setSignalMode('SUCCESS'), 2000); 
+      }, 60000); // Pulse every 60s
+      
+      return () => clearInterval(syncInterval);
+  }, [setSignalMode]);
 
   useEffect(() => {
     if (!isResizing) {
@@ -324,7 +407,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       <FeedbackBottle isOpen={isBottleOpen} onClose={() => setIsBottleOpen(false)} />
-      <TheDepths isOpen={isDepthsOpen} onClose={() => setIsDepthsOpen(false)} />
+      {/* TheDepths is now rendered at App root for z-index layering */}
 
       {isHidden && !isResizing && (
         <div 
@@ -450,26 +533,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Tactical Hook */}
           <div className={`mt-4 pt-4 border-t border-stone-200 relative ${renderMini ? 'flex justify-center' : ''}`}>
               {showHookSelector && !renderMini && (
-                  <div className="absolute top-0 left-0 w-full transform -translate-y-full pb-2 z-50">
-                      <div className="bg-white border border-stone-200 rounded-lg shadow-xl overflow-hidden">
-                          <div className="p-2 border-b border-stone-100 flex justify-between items-center bg-stone-50">
-                              <span className="text-[10px] font-bold uppercase text-slate-400 font-serif">Crew</span>
-                              <button onClick={() => setShowHookSelector(false)}><XIcon className="w-3 h-3 text-slate-400" /></button>
-                          </div>
-                          <div className="max-h-48 overflow-y-auto custom-scrollbar">
-                              {contacts?.map(c => (
-                                  <div 
-                                    key={c.id} 
-                                    onClick={() => selectContactForHook(c)}
-                                    className="p-2 hover:bg-blue-50 cursor-pointer text-xs font-medium text-slate-700 flex items-center gap-2 border-b border-stone-50 last:border-0"
-                                  >
-                                      <div className={`w-2 h-2 rounded-full ${c.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
-                                      {c.name}
-                                  </div>
-                              ))}
-                          </div>
-                      </div>
-                  </div>
+                  <CrewSelector onSelect={selectContactForHook} onClose={() => setShowHookSelector(false)} />
               )}
 
               <button
@@ -513,7 +577,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Clean Deck Policy: No TacklePanel or WaterBarrel rendered here anymore */}
         <div className="flex-1"></div>
 
-        <div className="mt-auto shrink-0 relative z-10">
+        {/* BOTTOM RAIL - STEALTH MODE CONTAINER */}
+        <div 
+            className="mt-auto shrink-0 relative z-10"
+            onMouseEnter={() => setIsRailActive(true)}
+            onMouseLeave={() => setIsRailActive(false)}
+        >
           {!renderMini && (
             <div className="px-4 pb-4">
                {/* SOS Beacon (Hold to Confirm) */}
@@ -537,14 +606,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                              <svg className="w-8 h-8 transform -rotate-90 pointer-events-none">
                                 <circle cx="16" cy="16" r="14" stroke="#fca5a5" strokeWidth="2" fill="none" />
                                 <circle 
-                                    cx="16" cy="16" r="14" stroke="#ef4444" strokeWidth="2" fill="none"
+                                    cx="16" cy="16" r="14" stroke="#ef4444" strokeWidth="2" fill="none" 
                                     strokeDasharray="88" strokeDashoffset={88 - (88 * holdProgress / 100)}
                                 />
                              </svg>
                          </div>
                      )}
 
-                     <Siren className={`w-4 h-4 ${(isSevereWeather || sosActive) ? 'animate-bounce' : 'group-hover:animate-ping'} z-10`} />
+                     <Siren className={`w-4 h-4 ${(isSevereWeather || sosActive) ? 'animate-bounce' : (isRailActive ? 'group-hover:animate-ping' : '')} z-10`} />
                      <span className="text-xs font-black uppercase tracking-wider font-serif z-10">
                          {isHolding ? "HOLD..." : "S.O.S."}
                      </span>
@@ -560,7 +629,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                <div className="border-t border-slate-200/50 pt-4 flex gap-2">
                  <button 
-                   onClick={() => setIsDepthsOpen(true)}
+                   onClick={() => setDepthsOpen(true)}
                    className="flex-1 flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-red-500 hover:bg-red-50/50 rounded-lg cursor-pointer border-2 border-transparent hover:border-dashed hover:border-red-200"
                  >
                    <Trash2 className="w-4 h-4 shrink-0" />
@@ -623,8 +692,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <span className="text-[9px] font-bold text-slate-400">1 SIGNAL</span>
                     </div>
 
-                    <div className="flex items-center justify-end w-full">
-                        <KnotMeter />
+                    <div className="flex items-center justify-end w-full gap-3">
+                        <SignalLamp />
+                        <KnotMeter isRailActive={isRailActive} />
                     </div>
                     <div className="w-full border-t border-slate-200 my-1"></div>
                     <button 
