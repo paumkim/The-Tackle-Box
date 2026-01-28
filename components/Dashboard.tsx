@@ -10,6 +10,7 @@ import { PressureGauge } from './PressureGauge';
 import { ManifestCheck } from './ManifestCheck';
 import { WeatherGlass } from './WeatherGlass';
 import { ResourceDock } from './ResourceDock';
+import { Chronometer } from './Chronometer';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store';
 
@@ -97,7 +98,8 @@ export const Dashboard: React.FC = () => {
           </h2>
           <p className="text-slate-500 font-serif italic text-sm">Vessel Dashboard & Command Center</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+            <Chronometer />
             <div className={`px-4 py-2 rounded-sm font-bold text-xs uppercase tracking-wider flex items-center gap-2 border ${meta.bg} ${meta.color}`}>
                 <PhaseIcon className="w-4 h-4" />
                 {meta.title}

@@ -4,6 +4,7 @@ import { useAppStore } from '../store';
 import { Lock, Activity, Anchor, Coffee } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../db';
+import { Chronometer } from './Chronometer';
 
 export const ShoreLeave: React.FC = () => {
   const isShoreLeave = useAppStore(state => state.isShoreLeave);
@@ -151,7 +152,7 @@ export const ShoreLeave: React.FC = () => {
             className="relative z-10 flex flex-col items-center text-center max-w-md w-full p-8"
          >
             {/* Header Stamp */}
-            <div className="mb-12 border-b-2 border-[#b5a642]/40 pb-6 w-full">
+            <div className="mb-8 border-b-2 border-[#b5a642]/40 pb-6 w-full">
                 <h2 className="text-xl font-black text-[#78350f] tracking-[0.3em] uppercase font-serif flex items-center justify-center gap-3 opacity-80">
                     <Coffee className="w-6 h-6" /> 
                     {captainStatus === 'GALLEY' ? 'The Galley' : 'Shore Leave'}
@@ -161,9 +162,13 @@ export const ShoreLeave: React.FC = () => {
                 </p>
             </div>
 
-            {/* Recessed Timer */}
+            {/* The Ship's Chronometer (Large) */}
+            <Chronometer variant="shore" />
+
+            {/* Recessed Timer (Duration) */}
             <div className="mb-8 relative">
-                <div className="text-8xl font-serif font-bold text-[#5c4d08]/90 tracking-tighter tabular-nums" style={{ textShadow: '1px 1px 0px rgba(255,255,255,0.7), inset 1px 1px 2px rgba(0,0,0,0.1)' }}>
+                <div className="text-[10px] font-bold text-[#5c4d08]/60 uppercase tracking-widest mb-1">Time Remaining</div>
+                <div className="text-7xl font-serif font-bold text-[#5c4d08]/90 tracking-tighter tabular-nums" style={{ textShadow: '1px 1px 0px rgba(255,255,255,0.7), inset 1px 1px 2px rgba(0,0,0,0.1)' }}>
                     {formatTimer(timeLeft)}
                 </div>
             </div>
