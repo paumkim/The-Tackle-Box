@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useAppStore } from '../store';
-import { Palmtree, Coffee, Play, Timer, Clock, Lock, Waves, Wind, CloudRain, Sun } from 'lucide-react';
+import { Lock, Activity, Anchor, Coffee } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../db';
 
@@ -12,25 +12,42 @@ export const ShoreLeave: React.FC = () => {
   const setCaptainStatus = useAppStore(state => state.setCaptainStatus);
   const awayStartTime = useAppStore(state => state.awayStartTime);
   const shoreLeaveDuration = useAppStore(state => state.shoreLeaveDuration);
-  const weatherCondition = useAppStore(state => state.weatherCondition);
+  const currentFPS = useAppStore(state => state.currentFPS);
   
   const [timeLeft, setTimeLeft] = useState(shoreLeaveDuration * 60);
-  const [estimatedReturn, setEstimatedReturn] = useState<string | null>(null);
-
+  
   // Resume Watch Hold Logic
   const [isHolding, setIsHolding] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const holdIntervalRef = useRef<number | null>(null);
   const HOLD_DURATION = 3000;
 
+  // Immersive Mode: Fullscreen & Context Menu Block
+  useEffect(() => {
+      if (isShoreLeave) {
+          // Request Fullscreen
+          document.documentElement.requestFullscreen().catch(err => {
+              console.warn("Fullscreen denied:", err);
+          });
+
+          // Block Right Click
+          const blockContext = (e: Event) => e.preventDefault();
+          document.addEventListener('contextmenu', blockContext);
+          
+          return () => {
+              document.removeEventListener('contextmenu', blockContext);
+              if (document.fullscreenElement) {
+                  document.exitFullscreen().catch(() => {});
+              }
+          };
+      }
+  }, [isShoreLeave]);
+
   useEffect(() => {
       let interval: number;
       if (isShoreLeave && awayStartTime) {
-          // Calculate Forecast once based on user setting
           const breakDuration = captainStatus === 'GALLEY' ? 60 * 60 * 1000 : shoreLeaveDuration * 60 * 1000;
-          const returnDate = new Date(awayStartTime + breakDuration);
-          setEstimatedReturn(returnDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-
+          
           // Timer Tick
           const updateTimer = () => {
               const now = Date.now();
@@ -42,12 +59,21 @@ export const ShoreLeave: React.FC = () => {
           interval = window.setInterval(updateTimer, 1000);
       } else {
           setTimeLeft(shoreLeaveDuration * 60);
-          setEstimatedReturn(null);
       }
       return () => clearInterval(interval);
   }, [isShoreLeave, awayStartTime, captainStatus, shoreLeaveDuration]);
 
   const handleResume = async () => {
+      // Haptic confirmation
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+      // Exit Fullscreen
+      if (document.fullscreenElement) {
+          try {
+            await document.exitFullscreen();
+          } catch(e) { console.error(e); }
+      }
+
       // Log the break duration
       if (awayStartTime) {
           const duration = Math.floor((Date.now() - awayStartTime) / 1000);
@@ -64,14 +90,24 @@ export const ShoreLeave: React.FC = () => {
   };
 
   const startHold = (e: React.MouseEvent | React.TouchEvent) => {
+      if (e.type === 'mousedown' && (e as React.MouseEvent).button !== 0) return;
+      
       setIsHolding(true);
       const start = Date.now();
       
+      // Initial subtle vibration
+      if (navigator.vibrate) navigator.vibrate(20);
+
       holdIntervalRef.current = window.setInterval(() => {
           const elapsed = Date.now() - start;
           const progress = Math.min(100, (elapsed / HOLD_DURATION) * 100);
           setHoldProgress(progress);
           
+          // Ramp up haptics near the end
+          if (progress > 80 && Math.random() > 0.7) {
+             if (navigator.vibrate) navigator.vibrate(10);
+          }
+
           if (progress >= 100) {
               if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
               handleResume();
@@ -94,18 +130,7 @@ export const ShoreLeave: React.FC = () => {
       return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const getSeaStateLabel = () => {
-      switch(weatherCondition) {
-          case 'STORM': return 'Heavy Swell';
-          case 'RAIN': return 'Choppy';
-          case 'FOG': return 'Low Visibility';
-          default: return 'Glassy';
-      }
-  };
-
   if (!isShoreLeave) return null;
-
-  const isGalley = captainStatus === 'GALLEY';
 
   return (
     <AnimatePresence>
@@ -113,114 +138,126 @@ export const ShoreLeave: React.FC = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[200] bg-[#fdfbf7] flex flex-col items-center justify-center text-center p-8"
+        className="fixed inset-0 z-[9999] bg-[#f4ecd8] flex flex-col items-center justify-center cursor-default select-none overflow-hidden"
       >
-         {/* Live Atmospheric Background */}
-         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-80 mix-blend-multiply"></div>
-             {/* Sea Mist Animation */}
-             <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/20 via-transparent to-transparent animate-current opacity-50"></div>
-         </div>
-         
-         <div className="relative z-10 max-w-xl w-full">
-            {/* Status Icon */}
-            <motion.div 
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className={`w-24 h-24 mx-auto mb-8 rounded-full flex items-center justify-center shadow-inner relative border-4 ${isGalley ? 'bg-orange-50 border-orange-100 text-orange-600' : 'bg-blue-50 border-blue-100 text-emerald-600'}`}
-            >
-               {isGalley ? (
-                   <>
-                       <Coffee className="w-12 h-12" />
-                       <motion.div 
-                           className="absolute -top-4 right-6 w-2 h-2 bg-white/50 rounded-full blur-sm"
-                           animate={{ y: -20, opacity: 0 }}
-                           transition={{ duration: 2, repeat: Infinity }}
-                       />
-                   </>
-               ) : (
-                   <Palmtree className="w-12 h-12" />
-               )}
-            </motion.div>
-            
-            <h2 className="text-3xl font-serif font-bold text-slate-800 mb-6 tracking-tight">
-                {isGalley ? 'The Galley' : 'Shore Leave'}
-            </h2>
-            
-            {/* Live Status Board */}
-            <div className="bg-white border-2 border-slate-800 rounded-xl p-6 shadow-[4px_4px_0px_rgba(30,41,59,0.2)] mb-10 relative overflow-hidden">
-                <div className="absolute inset-0 bg-slate-50 opacity-50 bg-[url('https://www.transparenttextures.com/patterns/graphy.png')] pointer-events-none"></div>
-                
-                <div className="relative z-10 grid grid-cols-2 gap-8 text-left">
-                    <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Time Remaining</span>
-                        <div className="text-5xl font-mono font-bold text-slate-800 tracking-tighter">
-                            {formatTimer(timeLeft)}
-                        </div>
-                    </div>
-                    <div className="flex flex-col justify-between">
-                        <div>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">EXPECTED BACK ON BRIDGE</span>
-                            <div className="text-lg font-serif font-bold text-blue-600 flex items-center gap-2">
-                                <Clock className="w-4 h-4" />
-                                {estimatedReturn || '--:--'}
-                            </div>
-                        </div>
-                        <div className="mt-4">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Sea State</span>
-                            <div className="text-sm font-bold text-slate-600 flex items-center gap-2">
-                                {weatherCondition === 'CLEAR' ? <Sun className="w-4 h-4 text-amber-500" /> : <Waves className="w-4 h-4 text-blue-500" />}
-                                {getSeaStateLabel()}
-                            </div>
-                        </div>
-                    </div>
+         {/* Texture Overlay - Full Parchment */}
+         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-60 mix-blend-multiply pointer-events-none"></div>
+         {/* Vignette */}
+         <div className="absolute inset-0 shadow-[inset_0_0_150px_rgba(87,83,78,0.3)] pointer-events-none"></div>
+
+         <motion.div 
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            className="relative z-10 flex flex-col items-center text-center max-w-md w-full p-8"
+         >
+            {/* Header Stamp */}
+            <div className="mb-12 border-b-2 border-[#b5a642]/40 pb-6 w-full">
+                <h2 className="text-xl font-black text-[#78350f] tracking-[0.3em] uppercase font-serif flex items-center justify-center gap-3 opacity-80">
+                    <Coffee className="w-6 h-6" /> 
+                    {captainStatus === 'GALLEY' ? 'The Galley' : 'Shore Leave'}
+                </h2>
+                <p className="text-xs text-[#8b7d3b] font-mono mt-2 tracking-widest font-bold">
+                    SYSTEMS IDLE • CREW RESTING
+                </p>
+            </div>
+
+            {/* Recessed Timer */}
+            <div className="mb-8 relative">
+                <div className="text-8xl font-serif font-bold text-[#5c4d08]/90 tracking-tighter tabular-nums" style={{ textShadow: '1px 1px 0px rgba(255,255,255,0.7), inset 1px 1px 2px rgba(0,0,0,0.1)' }}>
+                    {formatTimer(timeLeft)}
                 </div>
             </div>
 
-            <p className="text-slate-500 text-sm font-serif italic mb-10">
-               "{isGalley ? 'Fuel the engine, Captain. The ship waits.' : 'The sea will be there when you return. Rest your eyes.'}"
-            </p>
-
-            {/* Triple-Phase Resume Button */}
-            <button 
-              onMouseDown={startHold}
-              onMouseUp={endHold}
-              onMouseLeave={endHold}
-              onTouchStart={startHold}
-              onTouchEnd={endHold}
-              className="group relative flex items-center justify-center gap-3 bg-slate-800 text-white px-10 py-5 rounded-full font-bold text-lg transition-all shadow-xl mx-auto overflow-hidden select-none active:scale-95 active:bg-slate-900"
-            >
-               {/* Phase 2: The Charge (Filling Ring) */}
-               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                   {isHolding && (
-                       <svg className="w-full h-full absolute inset-0 transform -rotate-90 opacity-20">
-                           <rect width="100%" height="100%" fill="#1e3a8a" style={{ width: `${holdProgress}%`, transition: 'width 0.1s linear' }} />
-                       </svg>
-                   )}
-               </div>
-
-               {/* Phase 3: The Ignition (Ripple) */}
-               {holdProgress >= 100 && (
-                   <motion.div 
-                        initial={{ scale: 0, opacity: 0.5 }}
-                        animate={{ scale: 2, opacity: 0 }}
-                        className="absolute inset-0 bg-blue-400 rounded-full"
-                   />
-               )}
-
-               <div className="relative z-10 flex items-center gap-3">
-                   {isHolding ? <Lock className="w-5 h-5 animate-pulse" /> : <Play className="w-5 h-5 fill-current" />}
-                   {isHolding ? "HOLD TO CONFIRM..." : "RESUME WATCH"}
-               </div>
-            </button>
-            
-            <div className="mt-8 opacity-40">
-               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center justify-center gap-2">
-                   <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                   Vessel Underway • Autopilot Active
-               </span>
+            {/* Ink Heartbeat */}
+            <div className="w-64 h-16 relative flex items-center justify-center mb-12 opacity-80">
+                <svg className="w-full h-full" viewBox="0 0 200 60" preserveAspectRatio="none">
+                    {/* Hand-drawn baseline */}
+                    <path d="M0,30 Q 50,28 100,30 T 200,30" fill="none" stroke="#9f1239" strokeWidth="1" strokeOpacity="0.2" />
+                    
+                    {/* Live Ink EKG */}
+                    <motion.path 
+                        d="M0,30 L60,30 L70,10 L80,50 L90,30 L200,30" 
+                        fill="none" 
+                        stroke="#9f1239" 
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ 
+                            pathLength: [0, 1, 1], 
+                            opacity: [0, 1, 0],
+                            pathOffset: [0, 0, 1]
+                        }}
+                        transition={{ 
+                            duration: currentFPS >= 60 ? 1.5 : 0.8,
+                            repeat: Infinity, 
+                            ease: "linear",
+                            times: [0, 0.8, 1]
+                        }}
+                    />
+                </svg>
+                <div className="absolute -right-4 bottom-0 text-[9px] font-mono text-[#9f1239] font-bold">
+                    {currentFPS} BPM
+                </div>
             </div>
+
+            {/* The Brass Seal Button */}
+            <div className="relative group">
+                <div className="absolute -top-10 left-0 right-0 text-center transition-opacity duration-300">
+                    <span className={`text-[10px] font-bold uppercase tracking-[0.2em] font-serif ${isHolding ? 'text-[#78350f]' : 'text-[#a8a29e]'}`}>
+                        {isHolding ? "Engaging Mechanism..." : "Hold Seal to Return"}
+                    </span>
+                </div>
+
+                <button 
+                    onMouseDown={startHold}
+                    onMouseUp={endHold}
+                    onMouseLeave={endHold}
+                    onTouchStart={startHold}
+                    onTouchEnd={endHold}
+                    className="relative w-32 h-32 rounded-full flex items-center justify-center shadow-[0_10px_20px_rgba(0,0,0,0.15),0_4px_6px_rgba(0,0,0,0.1)] active:scale-95 active:shadow-inner transition-transform duration-100"
+                    style={{
+                        background: 'linear-gradient(135deg, #d4c55e 0%, #b5a642 50%, #854d0e 100%)',
+                    }}
+                >
+                    {/* Inner pressed groove */}
+                    <div className="absolute inset-2 rounded-full border-2 border-[#713f12]/20 shadow-[inset_2px_2px_5px_rgba(0,0,0,0.2)]"></div>
+                    
+                    {/* Ink Fill Progress (SVG Ring) */}
+                    <svg className="absolute inset-0 w-full h-full transform -rotate-90 pointer-events-none" viewBox="0 0 100 100">
+                        {/* Track */}
+                        <circle cx="50" cy="50" r="46" fill="none" stroke="#713f12" strokeWidth="1" opacity="0.1" />
+                        {/* Ink */}
+                        <circle 
+                            cx="50" cy="50" r="46" 
+                            fill="none" 
+                            stroke="#451a03" 
+                            strokeWidth="8"
+                            strokeDasharray="289"
+                            strokeDashoffset={289 - (289 * holdProgress / 100)}
+                            strokeLinecap="butt"
+                            className="transition-all duration-75 ease-linear"
+                            style={{ mixBlendMode: 'multiply' }}
+                        />
+                    </svg>
+
+                    {/* Button Face */}
+                    <div className="relative z-10 flex flex-col items-center justify-center">
+                        <Anchor className={`w-8 h-8 text-[#451a03] mb-1 ${isHolding ? 'animate-pulse' : ''}`} />
+                        <span className="text-[10px] font-black text-[#451a03] uppercase tracking-widest font-serif leading-none">
+                            RETURN
+                        </span>
+                    </div>
+                </button>
+            </div>
+
+         </motion.div>
+         
+         {/* Footer Disclaimer */}
+         <div className="absolute bottom-6 text-[10px] text-[#a8a29e] font-serif italic opacity-60">
+             Vessel in Low Power Mode. Unauthorized access prohibited.
          </div>
+
       </motion.div>
     </AnimatePresence>
   );

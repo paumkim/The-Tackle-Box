@@ -10,7 +10,7 @@ import {
   Folder as FolderIcon,
   FolderOpen,
   FolderPlus,
-  Trash2,
+  Trash2, 
   Box,
   Info,
   ChevronRight,
@@ -43,7 +43,7 @@ export const Aquarium: React.FC = () => {
   useEffect(() => {
       const duration = performance.now() - renderStart.current;
       if (duration > 16) {
-          Diagnostics.warn('Aquarium', `Heavy Drag Detected: ${duration.toFixed(2)}ms`);
+          // Diagnostics.warn('Aquarium', `Heavy Drag Detected: ${duration.toFixed(2)}ms`);
       }
       renderStart.current = performance.now();
   });
@@ -180,20 +180,61 @@ export const Aquarium: React.FC = () => {
 
   const handleContextMenu = (e: React.MouseEvent, type: 'EMPTY' | 'FOLDER' | 'ASSET', target?: any) => {
       e.preventDefault(); e.stopPropagation();
+      
+      // Update selection logic: Only update if target isn't already selected to prevent flash
+      // If right-clicking an already selected item, keep selection (allows bulk actions)
+      // If right-clicking unselected item, select only that item
       let newSet = new Set(selection);
-      if (target && !selection.has(target.key)) { newSet.clear(); newSet.add(target.key); setSelection(newSet); }
-      else if (type === 'EMPTY') { newSet.clear(); setSelection(newSet); }
+      if (target) {
+          if (!selection.has(target.key)) {
+              newSet.clear();
+              newSet.add(target.key);
+              setSelection(newSet);
+          }
+      } else if (type === 'EMPTY') {
+          // Right click on empty space clears selection
+          if (newSet.size > 0) {
+              newSet.clear();
+              setSelection(newSet);
+          }
+      }
+
       const finalType = newSet.size > 1 ? 'MULTI' : type;
       const x = Math.min(e.clientX, window.innerWidth - 220);
       const y = Math.min(e.clientY, window.innerHeight - 300);
+
+      // Use Universal Bridge Menu Structure
       if (finalType === 'EMPTY') {
-          openContextMenu({ x, y, header: 'Bridge Command', items: [{ label: 'New Folder', action: () => setIsNewFolderOpen(true), icon: 'FolderPlus' }, { label: 'Upload File', action: () => handleUploadFile(), icon: 'Upload' }, { type: 'SEPARATOR', label: '', action: () => {} }, { label: 'Go to Bridge', action: () => requestNavigation(ViewState.DASHBOARD), icon: 'LayoutDashboard' }, { label: 'Go to Deck', action: () => requestNavigation(ViewState.TASKS), icon: 'CheckSquare' }] });
+          openContextMenu({ 
+              x, y, 
+              header: 'Bridge Command', 
+              items: [
+                  { label: 'New Folder', action: () => setIsNewFolderOpen(true), icon: 'FolderPlus' }, 
+                  { label: 'Upload File', action: () => handleUploadFile(), icon: 'Upload' }, 
+                  { type: 'SEPARATOR', label: '', action: () => {} }, 
+                  { label: 'Go to Bridge', action: () => requestNavigation(ViewState.DASHBOARD), icon: 'LayoutDashboard' }, 
+                  { label: 'Go to Deck', action: () => requestNavigation(ViewState.TASKS), icon: 'CheckSquare' }
+              ] 
+          });
       } else {
           const items = [];
           if (finalType === 'ASSET') items.push({ label: 'Open', action: () => setInspectAsset(target), icon: 'ExternalLink' });
           if (finalType === 'FOLDER') items.push({ label: 'Open Folder', action: () => setCurrentFolderId(target.id), icon: 'FolderOpen' });
-          items.push({ type: 'SEPARATOR', label: '', action: () => {} }, { label: 'Move', action: () => setIsMoveModalOpen(true), icon: 'ArrowUpRight' }, { label: 'Duplicate', action: handleBulkDuplicate, icon: 'Copy' }, { label: 'Archive', action: handleBulkArchive, icon: 'Archive' }, { type: 'SEPARATOR', label: '', action: () => {} }, { label: 'Delete', action: () => setIsDeleteModalOpen(true), icon: 'Trash2', danger: true });
-          openContextMenu({ x, y, header: finalType === 'MULTI' ? 'Batch Actions' : 'Asset Control', items: items as any });
+          
+          items.push(
+              { type: 'SEPARATOR', label: '', action: () => {} }, 
+              { label: 'Move', action: () => setIsMoveModalOpen(true), icon: 'ArrowUpRight' }, 
+              { label: 'Duplicate', action: handleBulkDuplicate, icon: 'Copy' }, 
+              { label: 'Archive', action: handleBulkArchive, icon: 'Archive' }, 
+              { type: 'SEPARATOR', label: '', action: () => {} }, 
+              { label: 'Delete', action: () => setIsDeleteModalOpen(true), icon: 'Trash2', danger: true }
+          );
+          
+          openContextMenu({ 
+              x, y, 
+              header: finalType === 'MULTI' ? 'Batch Actions' : 'Asset Control', 
+              items: items as any 
+          });
       }
   };
 

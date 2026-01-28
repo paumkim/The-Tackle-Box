@@ -45,7 +45,8 @@ export const GlobalContextMenu: React.FC = () => {
   // Global Listener for Default "Bridge" Menu
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
-      // If defaultPrevented, it means a specific component (like Aquarium) handled it.
+      // If defaultPrevented, it means a specific component (like Aquarium) handled it via the store.
+      // This allows Aquarium to use the SAME component but inject custom items.
       if (e.defaultPrevented) return; 
       e.preventDefault();
       
@@ -128,26 +129,26 @@ export const GlobalContextMenu: React.FC = () => {
     <div 
       ref={menuRef}
       style={{ top: contextMenu.y, left: contextMenu.x }}
-      className="fixed z-[9999] w-60 bg-[#fdfbf7] border border-amber-900/20 rounded-sm shadow-2xl py-1 text-slate-800 font-serif text-sm animate-in fade-in zoom-in-95 duration-75 origin-top-left"
+      className="fixed z-[9999] w-60 bg-[#fdfbf7] border-2 border-[#b5a642] rounded-sm shadow-[4px_4px_0px_rgba(0,0,0,0.2)] py-1 text-slate-800 font-serif text-sm origin-top-left"
       onClick={(e) => e.stopPropagation()}
     >
         {/* Paper Texture */}
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-50 mix-blend-multiply pointer-events-none"></div>
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-60 mix-blend-multiply pointer-events-none"></div>
         
         <div className="relative z-10">
             {contextMenu.header && (
-                <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-amber-900/10 mb-1">
+                <div className="px-3 py-2 text-[10px] font-bold text-[#78350f] uppercase tracking-widest border-b border-[#b5a642]/30 mb-1 bg-[#f0eadd]">
                     {contextMenu.header}
                 </div>
             )}
 
             {contextMenu.items.map((item, index) => {
                 if (item.type === 'SEPARATOR') {
-                    return <div key={index} className="h-px bg-amber-900/10 my-1 mx-2"></div>;
+                    return <div key={index} className="h-px bg-[#b5a642]/20 my-1 mx-2"></div>;
                 }
                 if (item.type === 'HEADER') {
                     return (
-                        <div key={index} className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-t border-b border-amber-900/10 my-1 bg-amber-50/30">
+                        <div key={index} className="px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-t border-b border-[#b5a642]/20 my-1 bg-[#f0eadd]/50">
                             {item.label}
                         </div>
                     );
@@ -158,9 +159,9 @@ export const GlobalContextMenu: React.FC = () => {
                     <button 
                         key={index} 
                         onClick={() => { item.action(); closeContextMenu(); }} 
-                        className={`w-full text-left px-4 py-2 hover:bg-slate-100 flex items-center gap-3 font-bold text-xs ${item.danger ? 'text-red-600 hover:bg-red-50' : 'text-slate-700'}`}
+                        className={`w-full text-left px-4 py-2 hover:bg-[#e6dfcf] flex items-center gap-3 font-bold text-xs transition-colors ${item.danger ? 'text-red-700 hover:bg-red-50' : 'text-slate-800'}`}
                     >
-                        {Icon && <Icon className={`w-4 h-4 ${item.danger ? 'text-red-500' : 'text-slate-500'}`} />}
+                        {Icon && <Icon className={`w-4 h-4 ${item.danger ? 'text-red-600' : 'text-slate-600'}`} />}
                         {item.label}
                     </button>
                 );

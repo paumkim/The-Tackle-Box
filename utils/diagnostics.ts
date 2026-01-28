@@ -11,6 +11,7 @@ export interface LogEntry {
 class DiagnosticSystem {
   private logs: LogEntry[] = [];
   private fps: number = 60;
+  private fpsHistory: number[] = new Array(40).fill(60); // Flight Recorder Buffer
   private enabled: boolean = false;
   private readonly STORAGE_KEY = 'ttbox_logs';
   private readonly MAX_LOGS = 100;
@@ -117,6 +118,7 @@ class DiagnosticSystem {
       timestamp: new Date().toISOString(),
       performance: {
         fps: this.fps,
+        fpsHistory: [...this.fpsHistory],
         status: this.fps < 30 ? 'CRITICAL_DRAG' : (this.fps < 50 ? 'MINOR_DRAG' : 'OPTIMAL'),
         memory: (performance as any).memory ? Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024) + 'MB' : 'N/A',
         nodes: document.getElementsByTagName('*').length
@@ -143,6 +145,11 @@ class DiagnosticSystem {
       
       if (now - lastTime >= 1000) {
         this.fps = frames;
+        
+        // Record to flight recorder buffer
+        this.fpsHistory.push(this.fps);
+        if (this.fpsHistory.length > 40) this.fpsHistory.shift();
+
         frames = 0;
         lastTime = now;
         onUpdate(this.fps);
