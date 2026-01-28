@@ -446,8 +446,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className={`w-[2px] rounded-full ${isResizing ? 'bg-blue-50 h-full shadow-[0_0_15px_#3b82f6]' : 'h-8 bg-stone-300 group-hover/handle:bg-blue-400 group-hover/handle:h-16 group-hover/handle:shadow-[0_0_8px_#3b82f6]'}`} />
         </div>
 
-        {/* Header with Vessel Flag */}
-        <div className={`h-20 flex items-center ${renderMini ? 'justify-center px-0' : 'px-6'} border-b border-stone-200 bg-[#fdfbf7]/80 backdrop-blur-sm sticky top-0 shrink-0 whitespace-nowrap z-10`}>
+        {/* Header with Vessel Flag - Updated for Transparent Hull Protocol: removed blur */}
+        <div className={`h-20 flex items-center ${renderMini ? 'justify-center px-0' : 'px-6'} border-b border-stone-200 bg-[#fdfbf7]/80 sticky top-0 shrink-0 whitespace-nowrap z-10`}>
           <div className="bob-on-hover cursor-pointer shrink-0" onClick={() => onChangeView(ViewState.DASHBOARD)}>
              {renderMini ? <Fish className="w-6 h-6 text-blue-800" /> : <VesselFlag role={userRole} />}
           </div>

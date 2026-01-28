@@ -91,9 +91,9 @@ export const Settings: React.FC = () => {
     <AnimatePresence>
       {isSettingsOpen && (
         <>
-          {/* Dimmer (Night Watch) */}
+          {/* Dimmer (Removed for Transparent Hull Protocol) */}
           <motion.div 
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[998]"
+              className="fixed inset-0 bg-transparent z-[998]"
               onClick={handleClose}
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
@@ -101,10 +101,13 @@ export const Settings: React.FC = () => {
               transition={{ duration: 0 }}
           />
           
-          {/* Anchored Settings Deck */}
+          {/* Anchored Settings Deck - Updated for Transparent Hull Protocol */}
           <motion.div 
-              style={{ left: getLeftOffset() }}
-              className="fixed top-0 bottom-0 w-[320px] z-[999] bg-[#fdfbf7]/90 backdrop-blur-sm shadow-2xl border-r border-y border-slate-200/50 rounded-r-2xl overflow-hidden flex flex-col pointer-events-auto"
+              style={{ 
+                  left: getLeftOffset(),
+                  boxShadow: '-5px 0 15px rgba(0, 0, 0, 0.1)' 
+              }}
+              className="fixed top-0 bottom-0 w-[320px] z-[999] bg-[#fdfbf7] shadow-2xl border-r border-y border-slate-200/50 rounded-r-2xl overflow-hidden flex flex-col pointer-events-auto"
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
@@ -549,14 +552,14 @@ const SettingsContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                             <div className="flex gap-2">
                                 <button 
                                     onClick={() => setUnitSystem('IMPERIAL')}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border flex flex-col items-center justify-center gap-1 transition-all ${unitSystem === 'IMPERIAL' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border flex flex-col items-center justify-center gap-1 transition-all ${unitSystem === 'IMPERIAL' ? 'bg-white shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     <span className="uppercase tracking-widest">USA</span>
                                     <span className="font-mono text-[10px] opacity-70">Ft / °F / Miles</span>
                                 </button>
                                 <button 
                                     onClick={() => setUnitSystem('METRIC')}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border flex flex-col items-center justify-center gap-1 transition-all ${unitSystem === 'METRIC' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border flex flex-col items-center justify-center gap-1 transition-all ${unitSystem === 'METRIC' ? 'bg-white shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     <span className="uppercase tracking-widest">Metric</span>
                                     <span className="font-mono text-[10px] opacity-70">M / °C / Km</span>
@@ -673,14 +676,14 @@ const SettingsContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                             <div className="flex gap-2">
                                 <button 
                                     onClick={() => setLayoutMode('FULL_HULL')}
-                                    className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all flex flex-col items-center gap-1 ${layoutMode === 'FULL_HULL' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
+                                    className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all flex flex-col items-center gap-1 ${layoutMode === 'FULL_HULL' ? 'bg-white border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     <span>Full Hull</span>
                                     <span className="font-normal opacity-70 text-[9px]">(Centered)</span>
                                 </button>
                                 <button 
                                     onClick={() => setLayoutMode('EXPANSIVE')}
-                                    className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all flex flex-col items-center gap-1 ${layoutMode === 'EXPANSIVE' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
+                                    className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all flex flex-col items-center gap-1 ${layoutMode === 'EXPANSIVE' ? 'bg-white border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     <span>Expansive Sea</span>
                                     <span className="font-normal opacity-70 text-[9px]">(Edge-to-Edge)</span>
@@ -698,7 +701,7 @@ const SettingsContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                                     <button 
                                         key={mode}
                                         onClick={() => setCompassMode(mode as CompassMode)}
-                                        className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all ${compassMode === mode ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
+                                        className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all ${compassMode === mode ? 'bg-white border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                     >
                                         {mode}
                                     </button>
@@ -710,13 +713,13 @@ const SettingsContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                             <div className="flex gap-2">
                                 <button 
                                     onClick={() => setMapStyle('PAPER')}
-                                    className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all ${mapStyle === 'PAPER' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
+                                    className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all ${mapStyle === 'PAPER' ? 'bg-white border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     Classic Paper
                                 </button>
                                 <button 
                                     onClick={() => setMapStyle('HOLOGRAPHIC')}
-                                    className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all ${mapStyle === 'HOLOGRAPHIC' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
+                                    className={`flex-1 py-2 text-[10px] font-bold border rounded transition-all ${mapStyle === 'HOLOGRAPHIC' ? 'bg-white border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     Holographic
                                 </button>
@@ -749,13 +752,13 @@ const SettingsContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                             <div className="flex gap-2">
                                 <button 
                                     onClick={() => updateNotificationSettings({ frequency: 'IMMEDIATE' })}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border ${notificationSettings.frequency === 'IMMEDIATE' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border ${notificationSettings.frequency === 'IMMEDIATE' ? 'bg-white shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     Immediate
                                 </button>
                                 <button 
                                     onClick={() => updateNotificationSettings({ frequency: 'DIGEST' })}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border ${notificationSettings.frequency === 'DIGEST' ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border ${notificationSettings.frequency === 'DIGEST' ? 'bg-white shadow-md text-slate-900' : 'bg-transparent border-slate-400 text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     Daily Digest
                                 </button>

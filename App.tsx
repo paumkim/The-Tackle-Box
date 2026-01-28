@@ -48,10 +48,10 @@ const WeatherLayer: React.FC<{ condition: WeatherCondition }> = React.memo(({ co
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden will-change-transform">
-        {/* THE MIST (Fog) */}
+        {/* THE MIST (Fog) - Updated for Transparent Hull Protocol: removed blur */}
         {(condition === 'FOG' || condition === 'RAIN') && (
-            <div className="absolute inset-0 backdrop-blur-[1px] bg-white/20">
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-100/50 via-transparent to-slate-100/50 animate-current opacity-50 will-change-transform"></div>
+            <div className="absolute inset-0 bg-white/20">
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-100/30 via-transparent to-slate-100/30 animate-current opacity-40 will-change-transform"></div>
                 {condition === 'RAIN' && <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagonal-stripes.png')] opacity-10 mix-blend-multiply will-change-transform"></div>}
             </div>
         )}
@@ -165,13 +165,13 @@ const SOSModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-red-900/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-red-900/40"
     >
        {/* Background Pulse */}
        <motion.div 
-         animate={{ opacity: [0.2, 0.5, 0.2] }}
+         animate={{ opacity: [0.1, 0.3, 0.1] }}
          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-         className="absolute inset-0 bg-red-600/20 pointer-events-none"
+         className="absolute inset-0 bg-red-600/10 pointer-events-none"
        />
 
        <div className="bg-[#fdfbf7] p-8 rounded-xl shadow-2xl border-4 border-red-500 max-w-md w-full text-center relative overflow-hidden">
@@ -565,7 +565,7 @@ export const App = () => {
               <FishingLine />
 
               {/* Top Bar (The Bridge) */}
-              <header className={`h-16 flex items-center justify-between px-6 border-b z-50 shrink-0 transition-colors ${themeMode === 'MIDNIGHT' ? 'bg-slate-900/80 border-slate-700' : 'bg-[#fdfbf7]/80 border-stone-300'} backdrop-blur-sm relative z-20`}>
+              <header className={`h-16 flex items-center justify-between px-6 border-b z-50 shrink-0 transition-colors ${themeMode === 'MIDNIGHT' ? 'bg-slate-900/80 border-slate-700' : 'bg-[#fdfbf7]/80 border-stone-300'} relative z-20`}>
                   {/* Left: Ghost Catch */}
                   <div className="flex items-center gap-4">
                   {isSubmerged ? (

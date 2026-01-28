@@ -190,18 +190,18 @@ export const TheDepths: React.FC<TheDepthsProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-transparent">
       
-      {/* Click outside to close */}
-      <div className="absolute inset-0 z-0" onClick={onClose}></div>
+      {/* Click outside to close (Updated for Transparent Hull Protocol) */}
+      <div className="absolute inset-0 z-0 bg-transparent" onClick={onClose}></div>
 
-      {/* The Vault Container - Heavy Parchment & Brass */}
+      {/* The Vault Container - Heavy Parchment & Brass - Updated for Transparent Hull Protocol */}
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         transition={{ duration: 0.1 }}
-        className="relative z-10 w-full max-w-3xl h-[75vh] bg-[#fdfbf7] rounded-xl shadow-2xl border-4 border-[#b5a642] flex flex-col overflow-hidden"
+        className="relative z-10 w-full max-w-3xl h-[75vh] bg-[#fdfbf7] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] border-4 border-[#b5a642] flex flex-col overflow-hidden"
       >
         {/* Paper Texture Overlay */}
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-60 mix-blend-multiply pointer-events-none z-0"></div>
