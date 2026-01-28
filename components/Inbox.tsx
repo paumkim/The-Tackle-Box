@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Mail, MessageSquare, Phone, CheckSquare, FileText, Trash2, ArrowRight, Anchor, Filter, Fish, AlertOctagon, UploadCloud, Package, BarChart3, Image as ImageIcon, Box, Music, Video, ArrowUpRight, Radar, Archive } from 'lucide-react';
+import { Mail, MessageSquare, Phone, CheckSquare, FileText, Trash2, ArrowRight, Anchor, Filter, Fish, AlertOctagon, UploadCloud, Package, BarChart3, Image as ImageIcon, Box, Music, Video, ArrowUpRight, Radar, Archive, Inbox as InboxIcon } from 'lucide-react';
 import { LogEntry, TaskPriority, EffortLevel, Asset, Note } from '../types';
 import { db } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -155,7 +155,7 @@ export const Inbox: React.FC = () => {
       <header className="bridge-header-standard">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2 font-serif">
-            <Inbox className="w-6 h-6 text-slate-600" />
+            <InboxIcon className="w-6 h-6 text-slate-600" />
             The Trawl
           </h2>
           <p className="text-slate-500 font-serif italic text-sm">Sort the catch. Release the rest.</p>

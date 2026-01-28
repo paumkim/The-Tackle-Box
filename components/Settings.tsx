@@ -57,7 +57,8 @@ import {
   RefreshCcw,
   Droplets,
   X,
-  FileText
+  FileText,
+  ClipboardCheck
 } from 'lucide-react';
 import { db } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -65,6 +66,7 @@ import { useAppStore } from '../store';
 import { NotificationManager } from '../utils/notifications';
 import { UserRole, MapStyle, CompassMode, Contact, ViewState } from '../types';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Diagnostics } from '../utils/diagnostics';
 
 export const Settings: React.FC = () => {
   const isSettingsOpen = useAppStore(state => state.isSettingsOpen);
@@ -199,6 +201,13 @@ const SettingsContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       onClose();
   };
 
+  const exportVitals = () => {
+      const vitals = Diagnostics.getVitals();
+      const text = JSON.stringify(vitals, null, 2);
+      navigator.clipboard.writeText(text);
+      NotificationManager.send("Vitals Exported", "Diagnostic data copied to clipboard.");
+  }
+
   const renderContent = () => {
     const currentLevel = activePath[activePath.length - 1];
 
@@ -226,6 +235,9 @@ const SettingsContent: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 active={wakeLockEnabled}
                 onToggle={setWakeLockEnabled}
             />
+
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2 mt-4">Diagnostics</h3>
+            <SettingItem icon={ClipboardCheck} label="Export Ship's Vitals" onClick={exportVitals} />
            </div>
         </div>
       );

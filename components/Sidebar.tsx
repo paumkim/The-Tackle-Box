@@ -106,93 +106,44 @@ const SignalLamp: React.FC = () => {
 
 // Knot Meter Component with Stealth Throttling
 const KnotMeter: React.FC<{ isRailActive: boolean }> = ({ isRailActive }) => {
-    const isSubmerged = useAppStore(state => state.isSubmerged);
-    const isDragDetected = useAppStore(state => state.isDragDetected); // Now driven by App.tsx
-    const isDrifting = useAppStore(state => state.isDrifting);
-    const setCurrentSpeed = useAppStore(state => state.setCurrentSpeed);
+    const isDragDetected = useAppStore(state => state.isDragDetected); 
+    const currentSpeed = useAppStore(state => state.currentSpeed); // Driven by Diagnostics
     
-    const [speed, setLocalSpeed] = useState(12.4); 
-    const targetSpeed = useRef(12.4);
-    
-    // Boost speed when Full Ahead
-    const baseSpeed = isSubmerged ? 16.0 : 12.0;
-    const dragPenalty = isDragDetected ? 4.0 : 0;
-
-    useEffect(() => {
-        // Stealth Protocol: Throttle to 500ms when rail is idle, 100ms when active/hovered
-        const intervalDelay = isRailActive ? 100 : 500;
-
-        const renderLoop = setInterval(() => {
-             // Logic update
-             let baseMax = (baseSpeed + 6.5) - dragPenalty;
-             
-             // Natural Fluctuation (Reduced entropy when idle to save CPU)
-             const entropy = isRailActive ? Math.random() : 0.5;
-
-             if (entropy > 0.8) {
-                 targetSpeed.current = Math.min(targetSpeed.current + 0.3, baseMax);
-             } else if (entropy > 0.8) {
-                 let baseMin = (baseSpeed + 1.0) - dragPenalty;
-                 if (targetSpeed.current <= baseMin) {
-                     targetSpeed.current = (baseSpeed - dragPenalty) + (Math.random() * 0.8);
-                 }
-             }
-
-             // Interpolate
-             setLocalSpeed(prev => {
-                const diff = targetSpeed.current - prev;
-                if (Math.abs(diff) < 0.05) {
-                    setCurrentSpeed(prev);
-                    return prev;
-                }
-                const newVal = prev + diff * (isRailActive ? 0.2 : 0.5); // Snap faster when idle to avoid jank
-                setCurrentSpeed(newVal);
-                return newVal;
-            });
-        }, intervalDelay);
-
-        return () => {
-            clearInterval(renderLoop);
-        }
-    }, [dragPenalty, baseSpeed, isRailActive, setCurrentSpeed]);
-
     // Signal Translation Protocol
     let signal = 'HEAVY SEAS';
     let signalColor = 'text-amber-500'; // Warning Amber
     
-    if (speed >= 30) {
+    if (currentSpeed >= 15) {
         signal = 'FULL SAIL';
         signalColor = 'text-emerald-500'; // Vibrant Green
-    } else if (speed >= 15) {
+    } else if (currentSpeed >= 10) {
         signal = 'CRUISING';
         signalColor = 'text-amber-700'; // Soft Brass
-    }
-
-    if (isDrifting) {
-        signal = 'DRIFTING';
+    } else {
+        signal = 'DRAG';
         signalColor = 'text-red-500';
     }
 
     // Mechanical Tooltip Calculation
-    const fps = Math.round(speed * 1.66);
-    const load = Math.max(0, Math.min(100, 100 - (speed * 2.8))).toFixed(0);
+    const fps = Math.round((currentSpeed / 18.5) * 60); // Reverse engineer FPS for display
+    const load = Math.max(0, Math.min(100, 100 - (currentSpeed * 2.8))).toFixed(0);
 
     return (
         <div 
             className="flex flex-col items-end group/telemetry cursor-help" 
-            title={`${speed.toFixed(1)} kts ≈ ${fps} FPS (Engine Load: ${load}%)`}
+            title={`Real Performance: ~${fps} FPS (CPU Load: ${load}%)`}
         >
             <div className="flex items-center gap-2 font-mono text-xs text-slate-500 select-none">
-                 <ActivityIcon className={`w-3 h-3 ${speed > 30 ? 'text-emerald-500 animate-pulse' : (speed > 15 ? 'text-amber-600' : 'text-slate-400')}`} />
+                 <ActivityIcon className={`w-3 h-3 ${currentSpeed > 15 ? 'text-emerald-500' : (currentSpeed > 10 ? 'text-amber-600' : 'text-red-500 animate-pulse')}`} />
                  <span className="font-bold flex items-center gap-2">
-                    <span>{isDrifting ? '0.0' : speed.toFixed(1)} kts</span>
+                    <span>{currentSpeed.toFixed(1)} kts</span>
                     <span className="text-slate-300 opacity-50">/</span> 
                     <span className={`${signalColor} font-black text-[10px] tracking-wide uppercase`}>
-                        {isDrifting ? 'DRIFTING' : signal}
+                        {signal}
                     </span>
                  </span>
             </div>
-            {isDragDetected && !isDrifting && isRailActive && (
+            {isDragDetected && (
                 <span className="text-[9px] text-red-500 font-bold uppercase tracking-wider animate-pulse">
                     RESISTANCE DETECTED
                 </span>

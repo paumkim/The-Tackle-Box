@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
@@ -34,8 +35,20 @@ import { Asset, ViewState } from '../types';
 import { LightTable } from './LightTable';
 import { NotificationManager } from '../utils/notifications';
 import { useAppStore } from '../store';
+import { Diagnostics } from '../utils/diagnostics';
 
 export const Aquarium: React.FC = () => {
+  // --- Render Probe Start ---
+  const renderStart = useRef(performance.now());
+  useEffect(() => {
+      const duration = performance.now() - renderStart.current;
+      if (duration > 16) {
+          Diagnostics.log('WARN', 'Aquarium', `Heavy Drag Detected: ${duration.toFixed(2)}ms`);
+      }
+      renderStart.current = performance.now();
+  });
+  // --- Render Probe End ---
+
   const [currentFolderId, setCurrentFolderId] = useState<number | null>(() => {
     const saved = localStorage.getItem('tackle_aquarium_folder');
     return saved ? parseInt(saved) : null;
@@ -114,7 +127,10 @@ export const Aquarium: React.FC = () => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const fileList = e.target.files;
       if (!fileList) return;
+      
+      // Explicit cast to ensure TypeScript knows these are File objects
       const files = Array.from(fileList) as File[];
+      
       if (files.length > 0) {
           for (const file of files) {
               const fileType = String(file.type || '');

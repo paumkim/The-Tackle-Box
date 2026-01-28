@@ -42,6 +42,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
 import { NotificationManager } from './utils/notifications';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Diagnostics } from './utils/diagnostics';
 
 const WeatherLayer: React.FC<{ condition: WeatherCondition }> = React.memo(({ condition }) => {
   if (condition === 'CLEAR') return null;
@@ -253,6 +254,8 @@ export const App = () => {
 
   const sosActive = useAppStore(state => state.sosActive);
   const setSosActive = useAppStore(state => state.setSosActive);
+  const setCurrentSpeed = useAppStore(state => state.setCurrentSpeed);
+  const setDragDetected = useAppStore(state => state.setDragDetected);
 
   const topTask = useLiveQuery(() => db.tasks.where('isCompleted').equals(0).first());
   const pendingSignalCount = useLiveQuery(() => db.contacts.where('signalResponse').equals('PENDING').count()) || 0;
@@ -262,6 +265,33 @@ export const App = () => {
   useEffect(() => {
     checkSunset();
   }, [checkSunset]);
+
+  // --- DIAGNOSTIC ENGINE START ---
+  useEffect(() => {
+    Diagnostics.startHeartbeat((fps) => {
+      // Logic: 60fps = 18.5kts (Optimal)
+      // < 45fps = Drag detected (Yellow/Red)
+      const baseSpeed = (fps / 60) * 18.5;
+      
+      // Add mechanical noise to the gauge for realism
+      const noise = (Math.random() - 0.5) * 0.2;
+      const knots = Math.max(0, Math.min(25, baseSpeed + noise));
+      
+      setCurrentSpeed(knots);
+      
+      if (fps < 45) {
+        setDragDetected(true);
+        if (Math.random() > 0.95) { // Throttle logs
+            Diagnostics.log('WARN', 'Engine', `Performance Drag: ${fps} FPS`);
+        }
+      } else {
+        setDragDetected(false);
+      }
+    });
+    
+    Diagnostics.log('INFO', 'Bridge', 'Vessel systems initialized. Diagnostic engine running.');
+  }, [setCurrentSpeed, setDragDetected]);
+  // --- DIAGNOSTIC ENGINE END ---
 
   const handleNavigate = (view: ViewState) => {
       if (view === currentView) return;

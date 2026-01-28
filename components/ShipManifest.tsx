@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Book, Anchor, CheckCircle2, Zap, Layout, Terminal, Radio, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
