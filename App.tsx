@@ -32,6 +32,7 @@ import { RightControlRail } from './components/RightControlRail';
 import { CaptainInteractionLayer } from './components/CaptainInteractionLayer';
 import { DeployNetButton } from './components/DeployNetButton';
 import { HookDeck } from './components/HookDeck';
+import { GlobalContextMenu } from './components/GlobalContextMenu';
 import { ViewState, CrewStatus, FlareType, WeatherCondition } from './types';
 import { Search, SplitSquareHorizontal, Minimize2, X, Compass, Users, MapPin, CloudRain, AlertTriangle, Siren, Grid, Clock, Radio, Activity, Waves } from 'lucide-react';
 import { useAppStore } from './store';
@@ -74,9 +75,8 @@ const WeatherLayer: React.FC<{ condition: WeatherCondition }> = React.memo(({ co
 // The Current: Predictive Workload Meter
 const TheCurrent = () => {
     // Logic: Inflow Velocity vs Outflow Capacity
-    // Fix: Use filter() because checking for undefined key in index throws error
     const inboxCount = useLiveQuery(() => db.tasks.filter(t => t.projectId === undefined).count()) || 0;
-    const completedToday = useLiveQuery(() => db.tasks.where('isCompleted').equals(1).count()) || 0; // Simplified for demo
+    const completedToday = useLiveQuery(() => db.tasks.where('isCompleted').equals(1).count()) || 0; 
     const setShoreLeave = useAppStore(state => state.setShoreLeave);
 
     // Velocity = Incoming Pressure / (Capacity + Buffer)
@@ -241,7 +241,8 @@ export const App = () => {
 
   // Layout State
   const [isLiveWellOpen, setIsLiveWellOpen] = useState(false);
-  const [isSonarOpen, setIsSonarOpen] = useState(false);
+  const isSonarOpen = useAppStore(state => state.isSonarOpen);
+  const setSonarOpen = useAppStore(state => state.setSonarOpen);
   const [showDailyCatch, setShowDailyCatch] = useState(false);
   const [isDevOverlayActive, setIsDevOverlayActive] = useState(false);
   
@@ -529,6 +530,7 @@ export const App = () => {
 
       {/* Layer 4: Signals & Interaction */}
       <CaptainInteractionLayer />
+      <GlobalContextMenu />
       
       {/* Layer 0: Background Atmosphere */}
       <WeatherLayer condition={weatherCondition} />
@@ -630,7 +632,7 @@ export const App = () => {
                   />
 
                   <button 
-                      onClick={() => setIsSonarOpen(true)}
+                      onClick={() => setSonarOpen(true)}
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all shadow-sm ${themeMode === 'MIDNIGHT' ? 'bg-slate-800 border-slate-600 text-slate-300 hover:text-white' : 'bg-[#fdfbf7] border-stone-300 text-slate-600 hover:border-slate-400 hover:bg-stone-50 hover:text-slate-900'} ${pendingSignalCount > 0 ? 'ring-2 ring-[#3B4B5F]/20' : ''}`}
                       title={pendingSignalCount > 0 ? `${pendingSignalCount} Pending Signals` : "Sonar Scan (Alt + S)"}
                   >
@@ -680,7 +682,7 @@ export const App = () => {
 
       {/* Layer 3: Overlays */}
       <LiveWell isOpen={isLiveWellOpen} onClose={() => setIsLiveWellOpen(false)} />
-      <Sonar isOpen={isSonarOpen} onClose={() => setIsSonarOpen(false)} onNavigate={handleNavigate} />
+      <Sonar isOpen={isSonarOpen} onClose={() => setSonarOpen(false)} onNavigate={handleNavigate} />
       <TheNet />
 
       {/* Cabin Mode Vignette */}

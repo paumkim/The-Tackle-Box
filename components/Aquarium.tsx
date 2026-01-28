@@ -32,7 +32,8 @@ import {
   ExternalLink,
   Edit2,
   MoreVertical,
-  ArrowUpRight
+  ArrowUpRight,
+  AlertTriangle
 } from 'lucide-react';
 import { Asset } from '../types';
 import { LightTable } from './LightTable';
@@ -73,65 +74,6 @@ const playSafetyClick = (type: 'LIFT' | 'ENGAGE') => {
     }
 };
 
-const SafetyDeleteButton: React.FC<{ onDelete: () => void }> = ({ onDelete }) => {
-    const [isArmed, setIsArmed] = useState(false);
-    
-    const handleClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (isArmed) {
-            playSafetyClick('ENGAGE');
-            onDelete();
-        } else {
-            playSafetyClick('LIFT');
-            setIsArmed(true);
-        }
-    };
-
-    const handleMouseLeave = () => {
-        if (isArmed) {
-             setIsArmed(false); // Snap back instantly (Spring loaded)
-             playSafetyClick('LIFT'); 
-        }
-    };
-
-    return (
-        <button 
-            onClick={handleClick}
-            onMouseLeave={handleMouseLeave}
-            className={`
-                relative overflow-hidden flex items-center gap-2 px-3 py-1.5 rounded shadow-sm border text-xs font-bold uppercase tracking-wider transition-all duration-75 select-none
-                ${isArmed 
-                    ? 'bg-red-600 border-red-700 text-white hover:bg-red-700' 
-                    : 'bg-amber-50 border-amber-200 text-amber-900/50 hover:border-amber-300'
-                }
-            `}
-            title={isArmed ? "CONFIRM DISPOSAL" : "SAFETY LOCK ENGAGED"}
-        >
-            {/* Safety Hatch Pattern (Visible when locked) */}
-            {!isArmed && (
-                <div 
-                    className="absolute inset-0 opacity-20 pointer-events-none" 
-                    style={{ 
-                        backgroundImage: 'repeating-linear-gradient(45deg, #78350f, #78350f 2px, transparent 2px, transparent 8px)' 
-                    }} 
-                />
-            )}
-
-            {isArmed ? (
-                <>
-                    <Trash2 className="w-3 h-3 animate-pulse" /> 
-                    <span>Confirm</span>
-                </>
-            ) : (
-                <>
-                    <Lock className="w-3 h-3" />
-                    <span>Purge</span>
-                </>
-            )}
-        </button>
-    );
-};
-
 export const Aquarium: React.FC = () => {
   // State
   const [currentFolderId, setCurrentFolderId] = useState<number | null>(() => {
@@ -154,6 +96,7 @@ export const Aquarium: React.FC = () => {
   const [newFolderName, setNewFolderName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Context Menu State
   const [contextMenu, setContextMenu] = useState<{x: number, y: number, type: 'EMPTY' | 'FOLDER' | 'ASSET' | 'MULTI', target?: any} | null>(null);
@@ -296,13 +239,35 @@ export const Aquarium: React.FC = () => {
       e.preventDefault();
       e.stopPropagation();
       
-      // If clicking an item not in selection, select it solely
-      if (type !== 'EMPTY' && target && !selection.has(target.key)) {
-          setSelection(new Set([target.key]));
+      let newSet = new Set(selection);
+
+      // Unified Context Protocol: Smart Selection Update
+      if (target) {
+          // If the item right-clicked is NOT in the current selection, select ONLY it
+          if (!selection.has(target.key)) {
+              newSet.clear();
+              newSet.add(target.key);
+              setSelection(newSet);
+              // Update Last Selected Index for Shift-Click continuity
+              const index = rowItems.findIndex(i => i.key === target.key);
+              setLastSelectedIndex(index);
+          }
+          // If it IS in the selection, do not change selection (allows bulk action on existing selection)
+      } else {
+          // Right clicking empty space (Desks usually deselect files on background click)
+          if (type === 'EMPTY') {
+              newSet.clear();
+              setSelection(newSet);
+          }
       }
 
-      // If multiple items selected, use MULTI type
-      const finalType = selection.size > 1 ? 'MULTI' : type;
+      // Hybrid Interaction: Snap-open the Inspector on desktop if we have a valid asset selection
+      if ((type === 'ASSET' || type === 'FOLDER') && window.innerWidth >= 1280) {
+          setShowRightPanel(true);
+      }
+
+      // Determine context menu type based on resulting selection
+      const finalType = newSet.size > 1 ? 'MULTI' : type;
 
       setContextMenu({
           x: e.clientX,
@@ -347,22 +312,34 @@ export const Aquarium: React.FC = () => {
       return { assetIds, folderIds };
   };
 
-  const handleBulkDelete = async () => {
-      // Note: SafetyDeleteButton handles the confirmation click, so we can proceed directly if invoked
+  const openDeleteModal = () => {
+      setIsDeleteModalOpen(true);
+  };
+
+  const executeDelete = async () => {
       const { assetIds, folderIds } = getSelectedIds();
+      playSafetyClick('ENGAGE');
       
-      if (assetIds.length > 0) {
-          await db.assets.where('id').anyOf(assetIds).modify({ deletedAt: Date.now() });
-      }
-      
-      if (folderIds.length > 0) {
-          // For folders, we also soft delete contents to be safe
-          for (const fId of folderIds) {
-              await db.assets.where('folderId').equals(fId).modify({ deletedAt: Date.now() });
-              await db.folders.delete(fId); // Folders are hard deleted for now, contents soft deleted
+      // Close modal immediately for snap feel
+      setIsDeleteModalOpen(false); 
+      clearSelection(); // Clear selection immediately
+
+      // Background process for moving to Depths
+      (async () => {
+          if (assetIds.length > 0) {
+              await db.assets.where('id').anyOf(assetIds).modify({ deletedAt: Date.now() });
           }
-      }
-      clearSelection();
+          
+          if (folderIds.length > 0) {
+              for (const fId of folderIds) {
+                  // Soft delete contents inside folders
+                  await db.assets.where('folderId').equals(fId).modify({ deletedAt: Date.now() });
+                  // Folders are hard deleted from structure, but contents persist in Depths
+                  await db.folders.delete(fId); 
+              }
+          }
+          NotificationManager.send("Command Executed", `${assetIds.length + folderIds.length} items moved to The Depths.`);
+      })();
   };
 
   const handleBulkArchive = async () => {
@@ -386,8 +363,6 @@ export const Aquarium: React.FC = () => {
       const assetsToClone = await db.assets.where('id').anyOf(assetIds).toArray();
       
       for (const asset of assetsToClone) {
-          // Clone blob by reading it? No, Dexie stores Blob/File directly.
-          // Note: Direct object clone might reference same Blob.
           await db.assets.add({
               ...asset,
               id: undefined, // New ID
@@ -461,6 +436,53 @@ export const Aquarium: React.FC = () => {
       {/* Hidden File Input */}
       <input type="file" id="aquarium-upload" className="hidden" multiple onChange={handleFileChange} />
 
+      {/* Deletion Modal (The Native Terminal) */}
+      {isDeleteModalOpen && (
+          <div 
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/20 backdrop-grayscale-[0.5]" 
+            onClick={() => setIsDeleteModalOpen(false)}
+          >
+              <div 
+                className="w-96 bg-[#fdfbf7] border-2 border-amber-700/50 shadow-2xl p-6 relative" 
+                onClick={e => e.stopPropagation()}
+              >
+                  {/* Decorative Screws */}
+                  <div className="absolute top-2 left-2 w-1.5 h-1.5 rounded-full bg-amber-900/20"></div>
+                  <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-amber-900/20"></div>
+                  <div className="absolute bottom-2 left-2 w-1.5 h-1.5 rounded-full bg-amber-900/20"></div>
+                  <div className="absolute bottom-2 right-2 w-1.5 h-1.5 rounded-full bg-amber-900/20"></div>
+
+                  <h3 className="font-serif font-bold text-slate-900 uppercase tracking-widest text-xs mb-4 border-b border-amber-900/10 pb-2 flex items-center gap-2">
+                      <Lock className="w-3 h-3 text-amber-700" />
+                      Safety Interlock
+                  </h3>
+                  
+                  <p className="text-sm font-serif text-slate-700 mb-6 leading-relaxed">
+                      Commit {selectedCount} item{selectedCount > 1 ? 's' : ''} to The Depths? 
+                      <span className="block text-xs text-slate-500 mt-2 italic flex items-center gap-1">
+                          <Archive className="w-3 h-3" />
+                          Items can be recovered from the Archive.
+                      </span>
+                  </p>
+
+                  <div className="flex gap-3">
+                      <button 
+                          onClick={() => setIsDeleteModalOpen(false)}
+                          className="flex-1 py-3 border border-slate-300 text-slate-600 font-bold text-xs uppercase tracking-wider hover:bg-slate-50 transition-colors rounded-sm"
+                      >
+                          Abort
+                      </button>
+                      <button 
+                          onClick={executeDelete}
+                          className="flex-1 py-3 bg-slate-900 text-white font-bold text-xs uppercase tracking-wider hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 rounded-sm shadow-md"
+                      >
+                          <Trash2 className="w-3 h-3" /> Commit
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* New Folder Modal */}
       {isNewFolderOpen && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/20 backdrop-blur-sm" onClick={() => setIsNewFolderOpen(false)}>
@@ -490,23 +512,23 @@ export const Aquarium: React.FC = () => {
           </div>
       )}
 
-      {/* Context Menu */}
+      {/* Context Menu - Unified Aged Brass Aesthetic */}
       {contextMenu && (
           <div 
-            className="fixed z-[100] bg-[#fdfbf7] border border-stone-300 rounded-lg shadow-xl py-1 min-w-[180px] animate-in fade-in zoom-in-95 duration-75 overflow-hidden"
-            style={{ left: Math.min(contextMenu.x, window.innerWidth - 200), top: Math.min(contextMenu.y, window.innerHeight - 300) }}
+            className="fixed z-[100] bg-[#fdfbf7] border border-amber-900/20 rounded-sm shadow-2xl py-1 min-w-[200px] animate-in fade-in zoom-in-95 duration-75 overflow-hidden"
+            style={{ left: Math.min(contextMenu.x, window.innerWidth - 220), top: Math.min(contextMenu.y, window.innerHeight - 300) }}
             onClick={(e) => e.stopPropagation()}
           >
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 border-b border-stone-100 bg-stone-50/50">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 border-b border-amber-900/10 bg-stone-50/50">
                   {contextMenu.type === 'EMPTY' ? 'Deck Commands' : (contextMenu.type === 'MULTI' ? 'Batch Actions' : 'Asset Control')}
               </div>
               
               {contextMenu.type === 'EMPTY' && (
                   <>
-                      <button onClick={() => { setIsNewFolderOpen(true); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-blue-50 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
+                      <button onClick={() => { setIsNewFolderOpen(true); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-slate-100 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
                           <FolderPlus className="w-4 h-4 text-blue-500" /> New Folder
                       </button>
-                      <button onClick={() => { handleUploadFile(); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-blue-50 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
+                      <button onClick={() => { handleUploadFile(); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-slate-100 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
                           <Upload className="w-4 h-4 text-slate-500" /> Upload File
                       </button>
                   </>
@@ -515,33 +537,33 @@ export const Aquarium: React.FC = () => {
               {(contextMenu.type === 'FOLDER' || contextMenu.type === 'ASSET' || contextMenu.type === 'MULTI') && (
                   <>
                       {contextMenu.type === 'ASSET' && (
-                          <button onClick={() => { setInspectAsset(contextMenu.target); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-blue-50 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
+                          <button onClick={() => { setInspectAsset(contextMenu.target); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-slate-100 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
                               <ExternalLink className="w-4 h-4 text-slate-500" /> Open
                           </button>
                       )}
                       {contextMenu.type === 'FOLDER' && (
-                          <button onClick={() => { setCurrentFolderId(contextMenu.target.id); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-blue-50 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
+                          <button onClick={() => { setCurrentFolderId(contextMenu.target.id); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-slate-100 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
                               <FolderOpen className="w-4 h-4 text-blue-500" /> Open Folder
                           </button>
                       )}
                       
-                      <div className="h-px bg-stone-200 mx-1 my-1"></div>
+                      <div className="h-px bg-amber-900/10 mx-2 my-1"></div>
                       
-                      <button onClick={() => { setIsMoveModalOpen(true); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-blue-50 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
+                      <button onClick={() => { setIsMoveModalOpen(true); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-slate-100 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
                           <ArrowUpRight className="w-4 h-4 text-slate-500" /> Move
                       </button>
-                      <button onClick={() => { handleBulkDuplicate(); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-blue-50 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
+                      <button onClick={() => { handleBulkDuplicate(); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-slate-100 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
                           <Copy className="w-4 h-4 text-slate-500" /> Duplicate
                       </button>
-                      <button onClick={() => { handleBulkArchive(); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-blue-50 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
+                      <button onClick={() => { handleBulkArchive(); setContextMenu(null); }} className="w-full px-4 py-2 hover:bg-slate-100 text-left text-xs font-bold text-slate-700 flex items-center gap-3">
                           <Archive className="w-4 h-4 text-amber-500" /> Archive
                       </button>
                       
-                      <div className="h-px bg-stone-200 mx-1 my-1"></div>
+                      <div className="h-px bg-amber-900/10 mx-2 my-1"></div>
                       
                       <button 
                         onClick={() => { 
-                            if(window.confirm("Confirm deletion of selected items?")) handleBulkDelete(); 
+                            openDeleteModal();
                             setContextMenu(null); 
                         }} 
                         className="w-full px-4 py-2 hover:bg-red-50 text-left text-xs font-bold text-red-600 flex items-center gap-3"
@@ -554,6 +576,7 @@ export const Aquarium: React.FC = () => {
       )}
 
       <div className="flex-1 flex overflow-hidden relative">
+          {/* ... Rest of existing Aquarium UI ... */}
           
           {/* LEFT: Navigation Tree (Adaptive) */}
           {/* Mobile: Absolute Drawer / Desktop: Relative Col */}
@@ -816,7 +839,14 @@ export const Aquarium: React.FC = () => {
                           
                           <div className="w-px h-6 bg-stone-300 mx-1"></div>
                           
-                          <SafetyDeleteButton onDelete={handleBulkDelete} />
+                          <button 
+                            onClick={openDeleteModal}
+                            className="relative overflow-hidden flex items-center gap-2 px-3 py-1.5 rounded shadow-sm border text-xs font-bold uppercase tracking-wider transition-all duration-75 select-none bg-amber-50 border-amber-200 text-amber-900/50 hover:border-amber-300"
+                            title="SAFETY LOCK ENGAGED"
+                          >
+                              <Lock className="w-3 h-3" />
+                              <span>Purge</span>
+                          </button>
                       </div>
                   </div>
               )}
@@ -892,7 +922,7 @@ export const Aquarium: React.FC = () => {
                                   <Info className="w-3 h-3" /> Open
                               </button>
                               <button 
-                                  onClick={handleBulkDelete}
+                                  onClick={openDeleteModal}
                                   className="w-full py-2 bg-white border border-slate-200 hover:border-red-300 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-md text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
                               >
                                   <Trash2 className="w-3 h-3" /> Delete

@@ -32,6 +32,10 @@ interface AppState {
   isCrewTyping: boolean;
   setCrewTyping: (isTyping: boolean) => void;
 
+  // Global UI States (Sonar, etc)
+  isSonarOpen: boolean;
+  setSonarOpen: (isOpen: boolean) => void;
+
   // Navigation
   navigationRequest: ViewState | null;
   requestNavigation: (view: ViewState) => void;
@@ -325,6 +329,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   setChatOpen: (isOpen) => set({ isChatOpen: isOpen }),
   isCrewTyping: false,
   setCrewTyping: (val) => set({ isCrewTyping: val }),
+
+  isSonarOpen: false,
+  setSonarOpen: (isOpen) => set({ isSonarOpen: isOpen }),
 
   navigationRequest: null,
   requestNavigation: (view) => set({ navigationRequest: view }),
