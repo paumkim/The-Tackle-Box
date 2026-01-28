@@ -145,7 +145,7 @@ export const Inbox: React.FC = () => {
       setIsDragging(true);
   };
 
-  const handleDragLeave = () => {
+  const handleDragLeave = (e: React.DragEvent) => {
       setIsDragging(false);
   };
 
@@ -239,9 +239,8 @@ export const Inbox: React.FC = () => {
       <div className="flex-1 overflow-y-auto px-6 pb-6 custom-scrollbar">
       {/* Supply Drop Zone */}
       <AnimatePresence>
-          <motion.div 
-            layout
-            className={`mb-6 border-2 border-dashed rounded-xl p-4 flex items-center justify-center transition-all duration-300 ${
+          <div 
+            className={`mb-6 border-2 border-dashed rounded-xl p-4 flex items-center justify-center transition-all ${
                 isDragging ? 'bg-blue-50 border-blue-400 h-32 scale-100' : 'bg-white border-stone-300 h-20 hover:border-blue-300'
             }`}
           >
@@ -254,16 +253,12 @@ export const Inbox: React.FC = () => {
                       <p className="text-xs text-slate-400 font-serif italic">Drag crates (files) here to load the Live Well.</p>
                   </div>
               </div>
-          </motion.div>
+          </div>
       </AnimatePresence>
 
       {/* Fresh Catch Section (Automatic Review) */}
       {(freshNotes.length > 0 || freshAssets.length > 0) && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
-          >
+          <div className="mb-8">
               <div className="flex items-center gap-2 mb-3 px-2">
                   <div className="relative">
                       <Radar className="w-5 h-5 text-blue-500 animate-spin-slow" />
@@ -347,7 +342,7 @@ export const Inbox: React.FC = () => {
               </div>
               
               <div className="my-6 border-t border-slate-200"></div>
-          </motion.div>
+          </div>
       )}
 
       {(logs.length === 0 && (!liveWellAssets || liveWellAssets.length === 0) && freshNotes.length === 0 && freshAssets.length === 0) ? (
@@ -365,14 +360,10 @@ export const Inbox: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          <AnimatePresence>
             {/* Live Assets (Supply Drop - older, not fresh) */}
             {liveWellAssets?.map((asset) => (
-                <motion.div 
+                <div 
                     key={`asset-${asset.id}`}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
                     className="group relative flex items-center p-4 rounded-xl border border-stone-200 bg-white hover:border-blue-300 transition-all cursor-pointer shadow-sm hover:shadow-md"
                 >
                     <div className="w-10 h-10 rounded-full flex items-center justify-center mr-4 shrink-0 shadow-sm border bg-slate-50 border-slate-200 text-slate-500">
@@ -405,16 +396,13 @@ export const Inbox: React.FC = () => {
                             <Trash2 className="w-4 h-4" />
                         </button>
                     </div>
-                </motion.div>
+                </div>
             ))}
 
             {/* Communication Logs */}
             {filteredLogs.map((log) => (
-              <motion.div 
+              <div 
                 key={log.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 100 }}
                 className={`group relative flex items-center p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${
                     log.type === 'bycatch' 
                     ? 'bg-stone-50/50 border-stone-200 opacity-70 hover:opacity-100 grayscale' 
@@ -464,9 +452,8 @@ export const Inbox: React.FC = () => {
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-              </motion.div>
+              </div>
             ))}
-          </AnimatePresence>
           <div className="p-4 text-center text-xs text-stone-400 font-mono opacity-50 uppercase tracking-widest">
             End of Line
           </div>

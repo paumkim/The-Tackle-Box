@@ -163,6 +163,16 @@
         -webkit-user-select: text;
       }
 
+      /* THE MECHANICAL DIRECTIVE: ZERO LATENCY */
+      button, a, input, select, textarea, .group, .sidebar-item, .nav-item {
+        transition: none !important;
+      }
+      
+      main, section, header, article, aside {
+        animation: none !important;
+        transition: none !important;
+      }
+
       /* Navigator Glass (Subtle 3D Frosted) */
       .navigator-glass {
         background: rgba(255, 255, 255, 0.45);
@@ -185,7 +195,7 @@
         background-color: rgba(255, 255, 255, 0.8);
         box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.3), 0 0 10px rgba(100, 116, 139, 0.1);
         border-radius: 4px;
-        transition: all 0.3s ease;
+        transition: none !important; /* Zero Latency */
         animation: unlock-pulse 0.5s ease-out;
       }
 
@@ -211,10 +221,6 @@
         background: #94a3b8;
       }
       
-      .deep-water-transition {
-        transition: background-color 3s ease-in-out, color 3s ease-in-out;
-      }
-
       /* Noise Texture for Glassmorphism Plus */
       .bg-noise {
         position: relative;
@@ -279,7 +285,8 @@
 
       .bob-on-hover:hover {
         transform: translateY(-2px);
-        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        /* Mechanical Snap Directive: Override hover transition */
+        transition: none !important;
       }
 
       /* The Ocean Current Effect - Subtle Light */
@@ -297,7 +304,7 @@
         border-radius: 4px;
         box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
         cursor: pointer;
-        transition: background 0.3s;
+        transition: none !important;
       }
       .tactile-switch.active {
         background: #1e293b; /* Dark Navy for Ink Style */
@@ -311,7 +318,7 @@
         background: white;
         border-radius: 2px;
         box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        transition: transform 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+        transition: none !important;
       }
       .tactile-switch.active .tactile-switch-handle {
         transform: translateX(28px);

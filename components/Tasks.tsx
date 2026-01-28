@@ -233,6 +233,7 @@ export const Tasks: React.FC = () => {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0 }}
                         className="mb-6 bg-white border border-slate-200 rounded-xl p-4 overflow-hidden shadow-sm"
                     >
                         <div className="flex items-center justify-between mb-4">
@@ -293,22 +294,19 @@ export const Tasks: React.FC = () => {
             </AnimatePresence>
 
             {/* Input Area */}
-            <motion.form 
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
+            <form 
                 onSubmit={addTask} 
                 className="mb-8 bg-white border border-slate-200 shadow-sm p-2 rounded-xl flex items-center gap-2 transition-shadow focus-within:ring-2 focus-within:ring-blue-100 relative z-20"
             >
                 <div className="relative">
-                <motion.button
-                    whileTap={{ scale: 0.95 }}
+                <button
                     type="button"
                     onClick={() => setShowPresets(!showPresets)}
                     className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                     title="Bait Presets"
                 >
                     <BoxSelect className="w-5 h-5" />
-                </motion.button>
+                </button>
                 
                 <AnimatePresence>
                 {showPresets && (
@@ -316,6 +314,7 @@ export const Tasks: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.95, y: -10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    transition={{ duration: 0 }}
                     className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden z-50"
                     >
                     <div className="p-2 text-xs font-semibold text-slate-400 bg-slate-50 border-b border-slate-100">BAIT PRESETS</div>
@@ -331,15 +330,14 @@ export const Tasks: React.FC = () => {
                 </div>
 
                 <div className="relative">
-                    <motion.button
-                    whileTap={{ scale: 0.95 }}
+                    <button
                     type="button"
                     onClick={handleToggleUrgency}
                     className={`p-2 rounded-lg transition-colors ${isUrgent ? 'bg-red-50 text-red-500 shadow-sm ring-1 ring-red-100' : 'bg-slate-100 text-slate-500 hover:text-slate-700'}`}
                     title={currentUrgentCount >= URGENT_LIMIT ? "Capacity Reached" : "Toggle Urgency"}
                     >
                     <AlertCircle className="w-5 h-5" />
-                    </motion.button>
+                    </button>
                     
                     <AnimatePresence>
                     {showLimitWarning && (
@@ -347,6 +345,7 @@ export const Tasks: React.FC = () => {
                             initial={{ opacity: 0, y: 10, scale: 0.9 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0 }}
+                            transition={{ duration: 0 }}
                             className="absolute top-full left-0 mt-2 w-64 bg-red-50 border border-red-200 text-red-800 text-xs p-3 rounded-lg shadow-xl z-50 flex items-start gap-2"
                         >
                             <ShieldAlert className="w-4 h-4 text-red-600 flex-shrink-0" />
@@ -390,15 +389,13 @@ export const Tasks: React.FC = () => {
                     {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                 </button>
 
-                <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                <button 
                 type="submit" 
                 className="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-lg transition-colors shadow-lg shadow-blue-200"
                 >
                 <Plus className="w-5 h-5" />
-                </motion.button>
-            </motion.form>
+                </button>
+            </form>
 
             {/* Task Lists */}
             <div className="space-y-8 pb-10">
@@ -410,7 +407,6 @@ export const Tasks: React.FC = () => {
                     <span className="text-[10px] bg-red-50 border border-red-200 text-red-600 px-2 py-0.5 rounded-full">{currentUrgentCount} / {URGENT_LIMIT} Capacity</span>
                     </h3>
                     <div className="space-y-3">
-                    <AnimatePresence>
                     {urgentTasks.map(task => (
                         <TaskItem 
                         key={task.id} 
@@ -422,7 +418,6 @@ export const Tasks: React.FC = () => {
                         isGlowing={true} 
                         />
                     ))}
-                    </AnimatePresence>
                     </div>
                 </section>
                 )}
@@ -432,17 +427,14 @@ export const Tasks: React.FC = () => {
                     {activeProjectId ? `${currentProject?.name} Tasks` : 'General Population'}
                 </h3>
                 <div className="space-y-2">
-                    <AnimatePresence>
                     {regularTasks.length === 0 && urgentTasks.length === 0 && (
-                    <motion.div 
-                        initial={{ opacity: 0 }} 
-                        animate={{ opacity: 1 }}
+                    <div 
                         className="p-8 text-center bg-slate-50 rounded-xl border border-slate-200 border-dashed"
                     >
                         <p className="text-slate-400 text-sm font-serif italic">
                             {activeProjectId ? 'Island mapped. No tasks visible.' : 'All caught up. Enjoy the water.'}
                         </p>
-                    </motion.div>
+                    </div>
                     )}
                     {regularTasks.map(task => (
                     <TaskItem 
@@ -454,7 +446,6 @@ export const Tasks: React.FC = () => {
                         onDelete={() => deleteTask(task.id!)} 
                     />
                     ))}
-                    </AnimatePresence>
                 </div>
                 </section>
 
@@ -462,7 +453,6 @@ export const Tasks: React.FC = () => {
                 <section className="opacity-60">
                     <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Washed Away</h3>
                     <div className="space-y-2">
-                    <AnimatePresence>
                     {completedTasks.map(task => (
                         <TaskItem 
                         key={task.id} 
@@ -473,7 +463,6 @@ export const Tasks: React.FC = () => {
                         onDelete={() => deleteTask(task.id!)} 
                         />
                     ))}
-                    </AnimatePresence>
                     </div>
                 </section>
                 )}
@@ -493,12 +482,7 @@ interface TaskItemProps {
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({ task, isActive, onToggle, onLineToggle, onDelete, isGlowing }) => (
-  <motion.div 
-    layout
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, scale: 0.95 }}
-    whileHover={{ scale: 1.01 }}
+  <div 
     className={`
     group flex items-center justify-between p-3 rounded-lg border shadow-sm transition-all cursor-default relative overflow-hidden
     ${isGlowing ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-md'}
@@ -511,13 +495,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, isActive, onToggle, onLineTog
     )}
 
     <div className="flex items-center gap-3 flex-1 z-10">
-      <motion.button 
-        whileTap={{ scale: 0.8 }}
+      <button 
         onClick={onToggle} 
         className="text-slate-400 hover:text-blue-500 transition-colors"
       >
         {task.isCompleted ? <CheckCircle2 className="w-5 h-5 text-blue-500" /> : <Circle className="w-5 h-5" />}
-      </motion.button>
+      </button>
       <div className="flex flex-col">
         <span className={`transition-colors duration-300 ${task.isCompleted ? 'line-through text-slate-400' : 'text-slate-800 font-medium'}`}>
           {task.title}
@@ -555,5 +538,5 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, isActive, onToggle, onLineTog
         <Trash2 className="w-4 h-4" />
       </button>
     </div>
-  </motion.div>
+  </div>
 );

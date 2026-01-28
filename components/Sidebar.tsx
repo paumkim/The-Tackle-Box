@@ -370,11 +370,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {isHidden && !isResizing && (
         <div 
-          className="absolute left-0 top-0 bottom-0 w-4 z-[60] cursor-e-resize hover:bg-blue-400/20 transition-colors group/sensor"
+          className="absolute left-0 top-0 bottom-0 w-4 z-[60] cursor-e-resize hover:bg-blue-400/20 group/sensor"
           onMouseEnter={() => setIsHoverRevealed(true)}
           title="Reveal Dock"
         >
-             <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-400/0 group-hover/sensor:bg-blue-400/50 shadow-[0_0_8px_#3b82f6] transition-all"></div>
+             <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-400/0 group-hover/sensor:bg-blue-400/50 shadow-[0_0_8px_#3b82f6]"></div>
         </div>
       )}
 
@@ -384,10 +384,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           width: targetWidth,
           x: isHidden && !isHoverRevealed && !isResizing ? -20 : 0
         }}
-        transition={isResizing ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 30 }}
+        transition={{ duration: 0 }}
         className={`
             flex-shrink-0 bg-[#fdfbf7] border-r border-stone-300 h-full flex flex-col z-[1000] relative group/sidebar 
-            shadow-[4px_0_10px_rgba(0,0,0,0.1)] overflow-visible transition-filters duration-500
+            shadow-[4px_0_10px_rgba(0,0,0,0.1)] overflow-visible
             ${isHidden && !isHoverRevealed && !isResizing ? 'pointer-events-none opacity-0' : 'opacity-100'}
             ${isDepartureManifestOpen ? 'pointer-events-none' : ''}
         `}
@@ -399,10 +399,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div 
           onMouseDown={startResizing}
           onDoubleClick={handleDoubleClickHandle}
-          className="absolute right-0 top-0 bottom-0 w-[4px] cursor-col-resize hover:bg-blue-400/10 transition-colors z-50 flex items-center justify-center group/handle active:bg-blue-500/20"
+          className="absolute right-0 top-0 bottom-0 w-[4px] cursor-col-resize hover:bg-blue-400/10 z-50 flex items-center justify-center group/handle active:bg-blue-500/20"
           title="Drag to Resize"
         >
-          <div className={`w-[2px] rounded-full transition-all duration-300 ${isResizing ? 'bg-blue-50 h-full shadow-[0_0_15px_#3b82f6]' : 'h-8 bg-stone-300 group-hover/handle:bg-blue-400 group-hover/handle:h-16 group-hover/handle:shadow-[0_0_8px_#3b82f6]'}`} />
+          <div className={`w-[2px] rounded-full ${isResizing ? 'bg-blue-50 h-full shadow-[0_0_15px_#3b82f6]' : 'h-8 bg-stone-300 group-hover/handle:bg-blue-400 group-hover/handle:h-16 group-hover/handle:shadow-[0_0_8px_#3b82f6]'}`} />
         </div>
 
         {/* Header with Vessel Flag */}
@@ -414,6 +414,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="overflow-hidden flex flex-col justify-center ml-3"
             initial={false}
             animate={{ opacity: renderMini ? 0 : 1, width: renderMini ? 0 : 'auto' }}
+            transition={{ duration: 0 }}
           >
             <h1 className="font-bold text-slate-800 tracking-tight leading-none mb-1 font-serif">
               The Tackle Box
@@ -460,13 +461,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           onChangeView(item.id);
                       }
                   }}
-                  className={`w-full flex items-center ${renderMini ? 'justify-center px-0' : 'px-3'} py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ease-in-out relative bob-on-hover ${
+                  className={`w-full flex items-center ${renderMini ? 'justify-center px-0' : 'px-3'} py-2.5 rounded-lg text-sm font-bold relative bob-on-hover ${
                     effectiveActive 
                       ? activeStyle
                       : (isCargoTarget ? 'bg-blue-100 ring-2 ring-blue-300 text-blue-900' : 'text-slate-500 hover:bg-stone-100 hover:text-slate-800 hover:shadow-inner')
                   }`}
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${!renderMini && 'mr-3'} transition-colors ${
+                  <Icon className={`w-4 h-4 shrink-0 ${!renderMini && 'mr-3'} ${
                     effectiveActive ? 'text-current' : (isCargoTarget ? 'text-blue-800 animate-bounce' : 'text-slate-400 group-hover/item:text-slate-600')
                   }`} />
                   
@@ -475,6 +476,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <motion.span 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
+                        transition={{ duration: 0 }}
                         className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis"
                       >
                         {isCargoTarget ? 'Drop Cargo' : item.label}
@@ -486,7 +488,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
 
                 {renderMini && hoveredItem === item.id && (
-                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-lg z-[70] whitespace-nowrap shadow-xl animate-in fade-in zoom-in-95 slide-in-from-left-2 duration-150 border border-slate-700 pointer-events-none">
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-lg z-[70] whitespace-nowrap shadow-xl border border-slate-700 pointer-events-none">
                     {item.label}
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 -ml-1 w-2 h-2 bg-slate-800 transform rotate-45 border-l border-b border-slate-700"></div>
                   </div>
@@ -523,7 +525,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 onClick={handleSetHook}
                 onContextMenu={handleSetHook}
-                className={`flex items-center ${renderMini ? 'justify-center w-full px-0' : 'px-3'} py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ease-in-out relative bob-on-hover text-slate-500 hover:bg-stone-50 hover:text-slate-900 group/hook border border-transparent hover:border-stone-200`}
+                className={`flex items-center ${renderMini ? 'justify-center w-full px-0' : 'px-3'} py-2.5 rounded-lg text-sm font-bold relative bob-on-hover text-slate-500 hover:bg-stone-50 hover:text-slate-900 group/hook border border-transparent hover:border-stone-200`}
                 title={hookedContact ? "Left-Click: Fold/Unfold Chat | Right-Click: Release Hook" : "Set Tactical Hook"}
               >
                   <Anchor className={`w-4 h-4 shrink-0 ${!renderMini && 'mr-3'} ${hookedContact ? 'text-amber-600' : 'text-slate-400'}`} />
@@ -572,7 +574,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                      onMouseLeave={endSosHold}
                      onTouchStart={startSosHold}
                      onTouchEnd={endSosHold}
-                     className={`flex-1 relative overflow-hidden flex items-center justify-center gap-2 px-3 py-2 rounded-lg border-2 transition-all shadow-sm group select-none ${
+                     className={`flex-1 relative overflow-hidden flex items-center justify-center gap-2 px-3 py-2 rounded-lg border-2 shadow-sm group select-none ${
                        sosActive || isSevereWeather
                          ? 'bg-red-50 border-red-400 text-red-700 shadow-red-200 animate-pulse' 
                          : 'bg-[#fdfbf7] border-red-100 text-red-600 hover:border-red-300 hover:text-red-700'
@@ -587,7 +589,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 <circle 
                                     cx="16" cy="16" r="14" stroke="#ef4444" strokeWidth="2" fill="none"
                                     strokeDasharray="88" strokeDashoffset={88 - (88 * holdProgress / 100)}
-                                    className="transition-all duration-100 ease-linear"
                                 />
                              </svg>
                          </div>
@@ -600,7 +601,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                    </button>
                    <button 
                      onClick={() => setConfirmingBreak(true)}
-                     className="flex items-center justify-center w-10 px-3 py-2 bg-[#fdfbf7] hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 rounded-lg border border-slate-200 hover:border-emerald-200 transition-colors shadow-sm"
+                     className="flex items-center justify-center w-10 px-3 py-2 bg-[#fdfbf7] hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 rounded-lg border border-slate-200 hover:border-emerald-200 shadow-sm"
                      title="Shore Leave Protocol (Ask Mascot)"
                    >
                      <Palmtree className="w-4 h-4" />
@@ -610,14 +611,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                <div className="border-t border-slate-200/50 pt-4 flex gap-2">
                  <button 
                    onClick={() => setIsDepthsOpen(true)}
-                   className="flex-1 flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-red-500 hover:bg-red-50/50 rounded-lg transition-colors cursor-pointer border-2 border-transparent hover:border-dashed hover:border-red-200"
+                   className="flex-1 flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-red-500 hover:bg-red-50/50 rounded-lg cursor-pointer border-2 border-transparent hover:border-dashed hover:border-red-200"
                  >
                    <Trash2 className="w-4 h-4 shrink-0" />
                    <span className="text-sm font-medium whitespace-nowrap overflow-hidden">The Depths</span>
                  </button>
                  <button 
                    onClick={() => setIsBottleOpen(true)}
-                   className="flex items-center justify-center w-10 h-10 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-blue-100"
+                   className="flex items-center justify-center w-10 h-10 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer border border-transparent hover:border-blue-100"
                    title="Message in a Bottle (Feedback)"
                  >
                    <MessageSquare className="w-4 h-4" />
@@ -656,7 +657,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 
                 <div className="flex flex-col items-end gap-1 flex-1">
                     {/* The Radio Room (Signal Row) */}
-                    <div className="flex items-center gap-2 mb-1 opacity-60 hover:opacity-100 transition-opacity cursor-help" title="Radio Room: Signal Activity">
+                    <div className="flex items-center gap-2 mb-1 opacity-60 hover:opacity-100 cursor-help" title="Radio Room: Signal Activity">
                         <div className="flex -space-x-1">
                             <div className="relative">
                                 <Slack className="w-3 h-3 text-slate-400" />
@@ -678,7 +679,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="w-full border-t border-slate-200 my-1"></div>
                     <button 
                       onClick={onToggleDevOverlay}
-                      className={`flex items-center gap-1 transition-colors shrink-0 text-xs ${isDevOverlayActive ? 'text-red-500 font-bold' : 'text-slate-400 hover:text-slate-600'}`}
+                      className={`flex items-center gap-1 shrink-0 text-xs ${isDevOverlayActive ? 'text-red-500 font-bold' : 'text-slate-400 hover:text-slate-600'}`}
                       title="Toggle Tangled Lines (Dev Overlay)"
                     >
                       <Bug className="w-3 h-3" />

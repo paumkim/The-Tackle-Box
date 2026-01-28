@@ -306,7 +306,7 @@ export const Settings: React.FC = () => {
                             <div className="mt-4 pt-4 border-t border-slate-100">
                                 <button 
                                     onClick={performEmergencyPump}
-                                    className="w-full flex items-center justify-center gap-2 p-3 bg-red-50 text-red-600 rounded-lg border border-red-200 hover:bg-red-100 transition-colors font-bold text-xs uppercase tracking-wider"
+                                    className="w-full flex items-center justify-center gap-2 p-3 bg-red-50 text-red-600 rounded-lg border border-red-200 hover:bg-red-100 font-bold text-xs uppercase tracking-wider"
                                 >
                                     <RefreshCcw className="w-4 h-4" /> Emergency Pump (Clear Water)
                                 </button>
@@ -373,7 +373,7 @@ export const Settings: React.FC = () => {
                     <PaperCard title="Contact Whitelist">
                         <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
                             {contacts?.map(contact => (
-                                <div key={contact.id} className="flex items-center justify-between p-2 rounded hover:bg-slate-50 transition-colors">
+                                <div key={contact.id} className="flex items-center justify-between p-2 rounded hover:bg-slate-50">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${contact.isEmergency ? 'bg-red-100 text-red-600' : 'bg-slate-200 text-slate-500'}`}>
                                             {contact.name.charAt(0)}
@@ -385,7 +385,7 @@ export const Settings: React.FC = () => {
                                     </div>
                                     <button 
                                         onClick={() => toggleEmergencyContact(contact)}
-                                        className={`px-3 py-1 text-[10px] font-bold rounded-full border transition-all ${contact.isEmergency ? 'bg-red-500 text-white border-red-600' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-400'}`}
+                                        className={`px-3 py-1 text-[10px] font-bold rounded-full border ${contact.isEmergency ? 'bg-red-500 text-white border-red-600' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-400'}`}
                                     >
                                         {contact.isEmergency ? 'SOS ACTIVE' : 'ADD'}
                                     </button>
@@ -416,7 +416,7 @@ export const Settings: React.FC = () => {
                             />
                             
                             {patcoAudioEnabled && (
-                                <div className="ml-2 pl-4 border-l-2 border-slate-200 animate-in slide-in-from-left-2">
+                                <div className="ml-2 pl-4 border-l-2 border-slate-200">
                                     <GraphiteSlider 
                                         label="Voice Calibration"
                                         value={patcoVolume}
@@ -782,7 +782,7 @@ export const Settings: React.FC = () => {
                 </div>
 
                 {notificationSettings.enabled && (
-                    <div className="px-4 space-y-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="px-4 space-y-4">
                         <PaperCard title="Signal Strength">
                             <div className="flex gap-2">
                                 <button 
@@ -820,6 +820,7 @@ export const Settings: React.FC = () => {
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }}
+              transition={{ duration: 0 }}
           />
           
           {/* Anchored Settings Deck (Pneumatic Slide) - Behind Sidebar, Above Dimmer */}
@@ -829,13 +830,13 @@ export const Settings: React.FC = () => {
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
-              transition={{ type: "tween", ease: [0.4, 0, 0.2, 1], duration: 0.3 }}
+              transition={{ duration: 0 }}
           >
               {/* Brass Close Latch */}
               <div className="absolute top-4 right-4 z-50">
                   <button 
                       onClick={handleClose}
-                      className="w-10 h-10 rounded-full flex items-center justify-center shadow-md border border-amber-900/30 bg-gradient-to-br from-[#fcd34d] via-[#b45309] to-[#78350f] hover:brightness-110 active:scale-95 transition-all group"
+                      className="w-10 h-10 rounded-full flex items-center justify-center shadow-md border border-amber-900/30 bg-gradient-to-br from-[#fcd34d] via-[#b45309] to-[#78350f] hover:brightness-110 active:scale-95 group"
                       title="Close Settings Deck"
                   >
                       <X className="w-5 h-5 text-slate-900 group-hover:text-black" />
@@ -870,7 +871,7 @@ const Header: React.FC<{ onBack: () => void, title: string }> = ({ onBack, title
 const SettingItem: React.FC<{ icon: any, label: string, value?: string, onClick?: () => void }> = ({ icon: Icon, label, value, onClick }) => (
   <div 
     onClick={onClick}
-    className={`flex items-center justify-between p-4 bg-white/60 rounded-lg border border-transparent mx-2 my-1 ${onClick ? 'cursor-pointer hover:bg-white hover:border-slate-200 hover:shadow-sm' : 'opacity-75'} transition-all`}
+    className={`flex items-center justify-between p-4 bg-white/60 rounded-lg border border-transparent mx-2 my-1 ${onClick ? 'cursor-pointer hover:bg-white hover:border-slate-200 hover:shadow-sm' : 'opacity-75'}`}
   >
     <div className="flex items-center text-slate-700">
       <Icon className="w-5 h-5 mr-3 text-slate-500" />
@@ -884,9 +885,9 @@ const SettingItem: React.FC<{ icon: any, label: string, value?: string, onClick?
 );
 
 const ToggleSettingItem: React.FC<{ icon: any, label: string, description?: string, active: boolean, onToggle: (val: boolean) => void }> = ({ icon: Icon, label, description, active, onToggle }) => (
-  <div className="flex items-center justify-between p-4 bg-white/60 rounded-lg border border-transparent mx-2 my-1 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all cursor-pointer" onClick={() => onToggle(!active)}>
+  <div className="flex items-center justify-between p-4 bg-white/60 rounded-lg border border-transparent mx-2 my-1 hover:bg-white hover:border-slate-200 hover:shadow-sm cursor-pointer" onClick={() => onToggle(!active)}>
     <div className="flex items-center text-slate-700 gap-3">
-        <div className={`p-1.5 rounded-md transition-colors ${active ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+        <div className={`p-1.5 rounded-md ${active ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
             <Icon className="w-5 h-5" />
         </div>
         <div>
@@ -896,17 +897,17 @@ const ToggleSettingItem: React.FC<{ icon: any, label: string, description?: stri
     </div>
     {/* Toggle Switch */}
     <div 
-        className={`relative w-10 h-5 rounded-full border transition-colors duration-200 ${active ? 'bg-emerald-500 border-emerald-600' : 'bg-stone-300 border-stone-400'}`}
+        className={`relative w-10 h-5 rounded-full border ${active ? 'bg-emerald-500 border-emerald-600' : 'bg-stone-300 border-stone-400'}`}
     >
-        <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${active ? 'translate-x-5' : 'translate-x-0'}`}></div>
+        <div className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transform ${active ? 'translate-x-5' : 'translate-x-0'}`}></div>
     </div>
   </div>
 );
 
 const TactileToggle: React.FC<{ label: string, description: string, active: boolean, onToggle: () => void, icon: any }> = ({ label, description, active, onToggle, icon: Icon }) => (
-    <div className="flex items-center justify-between p-4 bg-white/80 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-all cursor-pointer group" onClick={onToggle}>
+    <div className="flex items-center justify-between p-4 bg-white/80 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 cursor-pointer group" onClick={onToggle}>
         <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg transition-colors ${active ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+            <div className={`p-2 rounded-lg ${active ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
                 <Icon className="w-5 h-5" />
             </div>
             <div>
@@ -915,8 +916,8 @@ const TactileToggle: React.FC<{ label: string, description: string, active: bool
             </div>
         </div>
         
-        <div className={`relative w-14 h-7 rounded-full border transition-colors duration-200 ${active ? 'bg-emerald-500 border-emerald-600' : 'bg-stone-300 border-stone-400'}`}>
-            <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${active ? 'translate-x-7' : 'translate-x-0'}`}></div>
+        <div className={`relative w-14 h-7 rounded-full border ${active ? 'bg-emerald-500 border-emerald-600' : 'bg-stone-300 border-stone-400'}`}>
+            <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transform ${active ? 'translate-x-7' : 'translate-x-0'}`}></div>
         </div>
     </div>
 );
@@ -927,8 +928,8 @@ const GraphiteToggle: React.FC<{ label: string, description?: string, checked: b
            <div className="font-bold text-slate-700 text-sm mb-1">{label}</div>
            {description && <div className="text-xs text-slate-500 leading-tight max-w-[200px]">{description}</div>}
        </div>
-       <div className={`relative w-12 h-6 rounded-full border transition-colors duration-200 ${checked ? 'bg-emerald-500 border-emerald-600' : 'bg-stone-300 border-stone-400'}`}>
-           <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${checked ? 'translate-x-6' : 'translate-x-0'}`}></div>
+       <div className={`relative w-12 h-6 rounded-full border ${checked ? 'bg-emerald-500 border-emerald-600' : 'bg-stone-300 border-stone-400'}`}>
+           <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transform ${checked ? 'translate-x-6' : 'translate-x-0'}`}></div>
        </div>
     </div>
 );
@@ -964,7 +965,7 @@ const PaperCard: React.FC<{ title: string, children: React.ReactNode }> = ({ tit
 const RoleCard: React.FC<{ role: UserRole, label: string, desc: string, currentRole: UserRole | null, onSelect: (r: UserRole) => void }> = ({ role, label, desc, currentRole, onSelect }) => (
     <div 
         onClick={() => onSelect(role)}
-        className={`p-4 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${currentRole === role ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md' : 'bg-transparent border-slate-400 hover:bg-slate-50'}`}
+        className={`p-4 rounded-xl border cursor-pointer flex items-center justify-between ${currentRole === role ? 'bg-white/70 backdrop-blur-[4px] border-white/50 shadow-md' : 'bg-transparent border-slate-400 hover:bg-slate-50'}`}
     >
         <div>
             <h4 className={`font-bold ${currentRole === role ? 'text-slate-900' : 'text-slate-700'}`}>{label}</h4>
@@ -975,7 +976,7 @@ const RoleCard: React.FC<{ role: UserRole, label: string, desc: string, currentR
 );
 
 const LifelineCard: React.FC<{ icon: any, title: string, desc: string, action: string, type: 'email' | 'call', alert?: boolean }> = ({ icon: Icon, title, desc, action, type, alert }) => (
-    <div className={`flex items-center justify-between p-3 rounded-lg border transition-all group ${alert ? 'bg-red-50 border-red-200' : 'bg-white border-stone-200 hover:border-stone-300'}`}
+    <div className={`flex items-center justify-between p-3 rounded-lg border group ${alert ? 'bg-red-50 border-red-200' : 'bg-white border-stone-200 hover:border-stone-300'}`}
     >
         <div className="flex items-center gap-3">
             <div className={`p-2 rounded-full ${alert ? 'bg-red-100 text-red-600' : 'bg-stone-100 text-stone-500'}`}>
@@ -988,7 +989,7 @@ const LifelineCard: React.FC<{ icon: any, title: string, desc: string, action: s
         </div>
         <button 
             onClick={() => window.open(type === 'email' ? `mailto:${action}` : `tel:${action}`)}
-            className={`p-2 rounded-lg transition-colors ${alert ? 'hover:bg-red-100 text-red-500' : 'hover:bg-stone-100 text-slate-400 hover:text-blue-600'}`}
+            className={`p-2 rounded-lg ${alert ? 'hover:bg-red-100 text-red-500' : 'hover:bg-stone-100 text-slate-400 hover:text-blue-600'}`}
             title={type === 'email' ? 'Send Email' : 'Call'}
         >
             {type === 'email' ? <Mail className="w-4 h-4" /> : <Phone className="w-4 h-4" />}

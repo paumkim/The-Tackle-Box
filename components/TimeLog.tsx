@@ -2,9 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../db';
 import { Anchor, Ship, Lock } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { DepartureManifest } from './DepartureManifest';
 import { ViewState } from '../types';
 
@@ -164,13 +162,12 @@ export const TimeLog: React.FC = () => {
       <DepartureManifest onComplete={onManifestComplete} />
       
       <div className="flex flex-col items-center pointer-events-auto">
-        <motion.button
+        <button
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           onTouchStart={handleMouseDown}
           onTouchEnd={handleMouseUp}
-          whileTap={{ scale: 0.98 }}
           className={`
             relative flex flex-col items-center justify-center py-6 px-1 rounded-full border transition-all duration-300 overflow-hidden group select-none shadow-sm
             ${activeSessionId 
@@ -186,7 +183,7 @@ export const TimeLog: React.FC = () => {
             style={{ height: `${holdProgress}%` }}
           ></div>
 
-          <div className={`relative z-10 flex flex-col items-center ${activeSessionId ? 'gap-2' : 'gap-4'}`}>
+          <div className={`relative z-10 flex flex-col items-center ${activeSessionId ? 'gap-1' : 'gap-4'}`}>
              
              {/* 1. Status Dot (Top Stack - Active Only) */}
              {activeSessionId && (
@@ -214,12 +211,12 @@ export const TimeLog: React.FC = () => {
                 style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
              >
                  {activeSessionId 
-                    ? (isHolding ? "HOLD..." : (isOvertime ? "OVERTIME" : formatTimerSimple(elapsed)))
-                    : (isHolding ? "HOLD..." : "START")
+                    ? (isHolding ? "HOLD" : (isOvertime ? "OT" : formatTimerSimple(elapsed)))
+                    : (isHolding ? "HOLD" : "START")
                  }
              </span>
           </div>
-        </motion.button>
+        </button>
       </div>
     </>
   );
