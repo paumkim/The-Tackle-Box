@@ -1,0 +1,7 @@
+{
+  "name": "The Tackle Box",
+  "description": "A local-first, privacy-centric productivity suite combining the utility of a task manager with the depth of a developer's notebook.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

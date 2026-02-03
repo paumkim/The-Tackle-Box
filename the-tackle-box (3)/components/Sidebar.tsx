@@ -1,0 +1,573 @@
+
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  LayoutDashboard, 
+  Inbox, 
+  CheckSquare, 
+  Calendar, 
+  FileText, 
+  Terminal, 
+  Settings,
+  Fish,
+  Bug,
+  GripVertical,
+  Trash2,
+  Waves,
+  Users,
+  Folder,
+  Filter,
+  AlertCircle,
+  Hash,
+  Tag,
+  Layers,
+  Calendar as CalendarIcon,
+  Activity as ActivityIcon,
+  MessageSquare, // For Bottle
+  Siren,
+  Palmtree,
+  UploadCloud,
+  Link,
+  Bell,
+  BellOff,
+  Anchor,
+  Check,
+  X as XIcon,
+  HelpCircle,
+  BarChart3,
+  Mail,
+  Slack,
+  Activity
+} from 'lucide-react';
+import { ViewState, DEFAULT_NAV_ITEMS, NavItem, UserRole, Contact } from '../types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAppStore } from '../store';
+import { FeedbackBottle } from './FeedbackBottle';
+import { VesselFlag } from './VesselFlag';
+import { db } from '../db';
+import { NotificationManager } from '../utils/notifications';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { Parrot } from './Parrot';
+import { Diagnostics } from '../utils/diagnostics';
+
+interface SidebarProps {
+  currentView: ViewState;
+  onChangeView: (view: ViewState) => void;
+  isDevOverlayActive: boolean;
+  onToggleDevOverlay: () => void;
+}
+
+const IconMap: Record<string, React.FC<any>> = {
+  LayoutDashboard,
+  Inbox,
+  CheckSquare,
+  Calendar,
+  FileText, 
+  Terminal, 
+  Settings,
+  Waves, 
+  Users
+};
+
+// Telemetry Deck (The Heart Rate Monitor)
+const TelemetryDeck: React.FC<{ onClick?: () => void }> = ({ onClick }) => {
+    const currentFPS = useAppStore(state => state.currentFPS);
+    const developerMode = useAppStore(state => state.developerMode);
+
+    let status = "HEAVY SEAS";
+    let colorClass = "text-red-500";
+    let strokeColor = "#ef4444";
+    
+    if (currentFPS >= 60) {
+        status = "FULL SAIL";
+        colorClass = "text-emerald-500";
+        strokeColor = "#10b981";
+    } else if (currentFPS >= 30) {
+        status = "STEADY AS SHE GOES";
+        colorClass = "text-blue-500";
+        strokeColor = "#3b82f6";
+    }
+
+    return (
+        <div 
+            onClick={developerMode ? onClick : undefined}
+            className={`flex items-center gap-3 transition-opacity opacity-80 hover:opacity-100 ${developerMode ? 'cursor-pointer' : 'cursor-default'}`}
+            title={developerMode ? "Open Diagnostic HUD" : `Engine Speed: ${currentFPS} FPS`}
+        >
+            {/* Clinical ECG Monitor */}
+            <div className="h-8 w-16 relative overflow-hidden bg-slate-50/50 rounded border border-slate-200 shadow-inner flex items-center justify-center">
+                <svg className="w-full h-full p-1" viewBox="0 0 50 20" preserveAspectRatio="none">
+                    {/* The Pulse Line */}
+                    <motion.path 
+                        d="M0,10 L10,10 L15,5 L20,15 L25,10 L50,10" 
+                        fill="none" 
+                        stroke={strokeColor} 
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ 
+                            pathLength: [0, 1, 1], 
+                            opacity: [0, 1, 0],
+                            pathOffset: [0, 0, 1]
+                        }}
+                        transition={{ 
+                            duration: 1.5, 
+                            repeat: Infinity, 
+                            ease: "linear",
+                            times: [0, 0.8, 1]
+                        }}
+                    />
+                </svg>
+            </div>
+            
+            <div className="flex flex-col items-end">
+                <div className={`font-mono font-bold text-sm ${colorClass} leading-none tabular-nums`}>
+                    {currentFPS} FPS
+                </div>
+                <div className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-0.5 whitespace-nowrap">
+                    {status}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Crew Selector (Lazy Loaded)
+const CrewSelector: React.FC<{ onSelect: (contact: Contact) => void, onClose: () => void }> = ({ onSelect, onClose }) => {
+    const contacts = useLiveQuery(() => db.contacts.toArray());
+    
+    return (
+        <div className="absolute top-0 left-0 w-full transform -translate-y-full pb-2 z-50">
+            <div className="bg-white border border-stone-200 rounded-lg shadow-xl overflow-hidden">
+                <div className="p-2 border-b border-stone-100 flex justify-between items-center bg-stone-50">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 font-serif">Crew</span>
+                    <button onClick={onClose}><XIcon className="w-3 h-3 text-slate-400" /></button>
+                </div>
+                <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                    {contacts?.map(c => (
+                        <div 
+                        key={c.id} 
+                        onClick={() => onSelect(c)}
+                        className="p-2 hover:bg-blue-50 cursor-pointer text-xs font-medium text-slate-700 flex items-center gap-2 border-b border-stone-50 last:border-0"
+                        >
+                            <div className={`w-2 h-2 rounded-full ${c.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                            {c.name}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export const Sidebar: React.FC<SidebarProps> = ({ 
+  currentView, 
+  onChangeView, 
+  isDevOverlayActive, 
+  onToggleDevOverlay
+}) => {
+  const sidebarState = useAppStore(state => state.sidebarState);
+  const userRole = useAppStore(state => state.userRole);
+  const isDepartureManifestOpen = useAppStore(state => state.isDepartureManifestOpen);
+  const setSosActive = useAppStore(state => state.setSosActive);
+  const findMember = (name: string) => useAppStore.getState().crewManifest.find(c => c.name === name);
+  const sosActive = useAppStore(state => state.sosActive);
+  const weatherCondition = useAppStore(state => state.weatherCondition);
+  const hookedContactId = useAppStore(state => state.hookedContactId);
+  const setHookedContactId = useAppStore(state => state.setHookedContactId);
+  const sosLatchEnabled = useAppStore(state => state.sosLatchEnabled);
+  const setConfirmingBreak = useAppStore(state => state.setConfirmingBreak);
+  const setSettingsOpen = useAppStore(state => state.setSettingsOpen);
+  const isSettingsOpen = useAppStore(state => state.isSettingsOpen);
+  const setDepthsOpen = useAppStore(state => state.setDepthsOpen);
+  
+  const isChatOpen = useAppStore(state => state.isChatOpen);
+  const setChatOpen = useAppStore(state => state.setChatOpen);
+  const isCrewTyping = useAppStore(state => state.isCrewTyping);
+  
+  const [navItems, setNavItems] = useState<NavItem[]>(DEFAULT_NAV_ITEMS);
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [isBottleOpen, setIsBottleOpen] = useState(false);
+  const [showHookSelector, setShowHookSelector] = useState(false);
+  
+  // Rail Activity State (Stealth Mode)
+  const [isRailActive, setIsRailActive] = useState(false);
+  
+  // Queries - Only query singular hook contact if needed
+  const hookedContact = useLiveQuery(() => hookedContactId ? db.contacts.get(hookedContactId) : Promise.resolve(undefined), [hookedContactId]);
+
+  // SOS Hold Logic
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [isHolding, setIsHolding] = useState(false);
+  const holdIntervalRef = useRef<number | null>(null);
+  const HOLD_DURATION = 3000; // 3 seconds
+
+  const getRoleLabel = (role: string | null) => {
+      switch(role) {
+          case 'PLANNER': return 'Navigator';
+          case 'STUDENT': return 'Scholar';
+          case 'SALES': return 'Merchant';
+          default: return 'General';
+      }
+  }
+
+  const handleSetHook = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation(); 
+      
+      if (e.type === 'contextmenu') {
+          // Right click releases the hook
+          setHookedContactId(null);
+      } else {
+          // Left click actions
+          if (hookedContactId) {
+              // The Fold: Toggle chat view
+              setChatOpen(!isChatOpen);
+          } else {
+              // Open Selector
+              setShowHookSelector(!showHookSelector);
+          }
+      }
+  };
+
+  const selectContactForHook = (contact: Contact) => {
+      setHookedContactId(contact.id!);
+      setShowHookSelector(false);
+  }
+
+  // --- SOS Button Logic ---
+  const startSosHold = (e: React.MouseEvent | React.TouchEvent) => {
+      if (e.type === 'mousedown' && (e as React.MouseEvent).button !== 0) return; // Only left click
+      if (sosActive) return; // Already active
+
+      if (!sosLatchEnabled) {
+          setSosActive(true);
+          return;
+      }
+
+      setIsHolding(true);
+      const startTime = Date.now();
+      
+      holdIntervalRef.current = window.setInterval(() => {
+          const elapsed = Date.now() - startTime;
+          const progress = Math.min(100, (elapsed / HOLD_DURATION) * 100);
+          setHoldProgress(progress);
+
+          if (progress >= 100) {
+              setSosActive(true);
+              endSosHold();
+          }
+      }, 16);
+  };
+
+  const endSosHold = () => {
+      if (holdIntervalRef.current) {
+          clearInterval(holdIntervalRef.current);
+          holdIntervalRef.current = null;
+      }
+      setIsHolding(false);
+      setHoldProgress(0);
+  };
+
+  const isMini = sidebarState === 'mini';
+  const isHidden = sidebarState === 'hidden';
+  const [isHoverRevealed, setIsHoverRevealed] = useState(false);
+  
+  // FIXED WIDTHS (BOLTED DOWN HULL)
+  const targetWidth = isHidden && isHoverRevealed ? 68 : (sidebarState === 'full' ? 260 : (sidebarState === 'mini' ? 68 : 0));
+  const renderMini = targetWidth < 180; 
+
+  const isSevereWeather = weatherCondition === 'STORM';
+
+  return (
+    <>
+      <FeedbackBottle isOpen={isBottleOpen} onClose={() => setIsBottleOpen(false)} />
+      {/* TheDepths is now rendered at App root for z-index layering */}
+
+      {isHidden && (
+        <div 
+          className="absolute left-0 top-0 bottom-0 w-4 z-[60] cursor-pointer hover:bg-blue-400/20 group/sensor"
+          onMouseEnter={() => setIsHoverRevealed(true)}
+          title="Reveal Dock"
+        >
+             <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-400/0 group-hover/sensor:bg-blue-400/50 shadow-[0_0_8px_#3b82f6]"></div>
+        </div>
+      )}
+
+      <motion.aside 
+        initial={false}
+        animate={{ 
+          width: targetWidth,
+          x: isHidden && !isHoverRevealed ? -20 : 0
+        }}
+        transition={{ duration: 0 }}
+        className={`
+            flex-shrink-0 bg-[#fdfbf7] border-r border-stone-300 h-full flex flex-col z-[1000] relative group/sidebar 
+            shadow-[4px_0_10px_rgba(0,0,0,0.1)] overflow-visible
+            ${isHidden && !isHoverRevealed ? 'pointer-events-none opacity-0' : 'opacity-100'}
+            ${isDepartureManifestOpen ? 'pointer-events-none' : ''}
+        `}
+        onMouseLeave={() => isHidden && setIsHoverRevealed(false)}
+      >
+        {/* Paper Texture Overlay */}
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] opacity-60 mix-blend-multiply pointer-events-none z-0"></div>
+
+        {/* Header with Vessel Flag - Updated for Transparent Hull Protocol: removed blur */}
+        <div className={`h-20 flex items-center ${renderMini ? 'justify-center px-0' : 'px-6'} border-b border-stone-200 bg-[#fdfbf7]/80 sticky top-0 shrink-0 whitespace-nowrap z-10`}>
+          <div className="bob-on-hover cursor-pointer shrink-0" onClick={() => onChangeView(ViewState.DASHBOARD)}>
+             {renderMini ? <Fish className="w-6 h-6 text-blue-800" /> : <VesselFlag role={userRole} />}
+          </div>
+          <motion.div 
+            className="overflow-hidden flex flex-col justify-center ml-3"
+            initial={false}
+            animate={{ opacity: renderMini ? 0 : 1, width: renderMini ? 0 : 'auto' }}
+            transition={{ duration: 0 }}
+          >
+            <h1 className="font-bold text-slate-800 tracking-tight leading-none mb-1 font-serif">
+              The Tackle Box
+            </h1>
+            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+               {getRoleLabel(userRole)} Class
+            </span>
+          </motion.div>
+        </div>
+        
+        <nav className="p-4 space-y-2 flex-shrink-0 mt-4 overflow-x-hidden relative z-10">
+          {navItems.map((item, index) => {
+            const Icon = IconMap[item.icon] || Fish;
+            const isActive = currentView === item.id && item.id !== ViewState.SETTINGS;
+            
+            // Special case for Settings active state
+            const isSettingsActive = item.id === ViewState.SETTINGS && isSettingsOpen;
+            const effectiveActive = isActive || isSettingsActive;
+
+            // Define styles for active state
+            let activeStyle = 'navigator-glass font-serif font-bold text-slate-800'; 
+            if (item.id === ViewState.SETTINGS && isSettingsOpen) {
+                activeStyle = 'bg-white shadow-[0_0_15px_rgba(59,130,246,0.3)] text-slate-900 border-blue-200 ring-2 ring-blue-50 font-bold';
+            }
+
+            return (
+              <div
+                key={item.id}
+                className={`relative group/item ${effectiveActive ? 'z-10' : ''}`}
+                onMouseEnter={() => setHoveredItem(item.id)}
+                onMouseLeave={() => setHoveredItem(null)}
+              >
+                <button
+                  onClick={() => {
+                      if (item.id === ViewState.SETTINGS) {
+                          Diagnostics.info("Sidebar", "Requesting Settings Toggle");
+                          setSettingsOpen(true);
+                      } else {
+                          onChangeView(item.id);
+                      }
+                  }}
+                  className={`w-full flex items-center ${renderMini ? 'justify-center px-0' : 'px-3'} py-2.5 rounded-lg text-sm font-bold relative bob-on-hover ${
+                    effectiveActive 
+                      ? activeStyle
+                      : 'text-slate-500 hover:bg-stone-100 hover:text-slate-800 hover:shadow-inner'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 shrink-0 ${!renderMini && 'mr-3'} ${
+                    effectiveActive ? 'text-current' : 'text-slate-400 group-hover/item:text-slate-600'
+                  }`} />
+                  
+                  {!renderMini && (
+                    <>
+                      <motion.span 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0 }}
+                        className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis"
+                      >
+                        {item.label}
+                      </motion.span>
+                    </>
+                  )}
+                </button>
+
+                {renderMini && hoveredItem === item.id && (
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-lg z-[70] whitespace-nowrap shadow-xl border border-slate-700 pointer-events-none">
+                    {item.label}
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 -ml-1 w-2 h-2 bg-slate-800 transform rotate-45 border-l border-b border-slate-700"></div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          
+          {/* Tactical Hook */}
+          <div className={`mt-4 pt-4 border-t border-stone-200 relative ${renderMini ? 'flex justify-center' : ''}`}>
+              {showHookSelector && !renderMini && (
+                  <CrewSelector onSelect={selectContactForHook} onClose={() => setShowHookSelector(false)} />
+              )}
+
+              <button
+                onClick={handleSetHook}
+                onContextMenu={handleSetHook}
+                className={`flex items-center ${renderMini ? 'justify-center w-full px-0' : 'px-3'} py-2.5 rounded-lg text-sm font-bold relative bob-on-hover text-slate-500 hover:bg-stone-50 hover:text-slate-900 group/hook border border-transparent hover:border-stone-200`}
+                title={hookedContact ? "Left-Click: Fold/Unfold Chat | Right-Click: Release Hook" : "Set Tactical Hook"}
+              >
+                  <Anchor className={`w-4 h-4 shrink-0 ${!renderMini && 'mr-3'} ${hookedContact ? 'text-amber-600' : 'text-slate-400'}`} />
+                  {!renderMini && (
+                      <span className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-between">
+                          <div className="flex flex-col">
+                              {hookedContact ? (
+                                  <span 
+                                    className={`leading-none font-serif transition-all duration-500 ${isCrewTyping ? 'text-emerald-600 drop-shadow-[0_0_5px_rgba(74,222,128,0.8)]' : 'text-slate-800'}`}
+                                  >
+                                      {hookedContact.name}
+                                  </span>
+                              ) : (
+                                  <span className="leading-none font-serif">Set Hook...</span>
+                              )}
+                              {hookedContact && (
+                                  <span className="text-[9px] text-slate-400 font-mono mt-0.5 flex items-center gap-1">
+                                      {isCrewTyping ? 'TYPING...' : (isChatOpen ? 'CHANNEL OPEN' : 'STANDING BY')}
+                                  </span>
+                              )}
+                          </div>
+                          {hookedContact && (
+                              <span className="flex items-center gap-1">
+                                  {hookedContact.signalResponse === 'AYE' && <Check className="w-3 h-3 text-emerald-600" />}
+                                  {hookedContact.signalResponse === 'NAY' && <XIcon className="w-3 h-3 text-red-500" />}
+                                  {hookedContact.signalResponse === 'PENDING' && <HelpCircle className="w-3 h-3 text-amber-500 animate-pulse" />}
+                              </span>
+                          )}
+                      </span>
+                  )}
+              </button>
+          </div>
+        </nav>
+
+        {/* Clean Deck Policy: No TacklePanel or WaterBarrel rendered here anymore */}
+        <div className="flex-1"></div>
+
+        {/* BOTTOM RAIL - STEALTH MODE CONTAINER */}
+        <div 
+            className="mt-auto shrink-0 relative z-10"
+            onMouseEnter={() => setIsRailActive(true)}
+            onMouseLeave={() => setIsRailActive(false)}
+        >
+          {!renderMini && (
+            <div className="px-4 pb-4">
+               {/* SOS Beacon (Hold to Confirm) */}
+               <div className="mb-2 flex gap-2">
+                   <button 
+                     onMouseDown={startSosHold}
+                     onMouseUp={endSosHold}
+                     onMouseLeave={endSosHold}
+                     onTouchStart={startSosHold}
+                     onTouchEnd={endSosHold}
+                     className={`flex-1 relative overflow-hidden flex items-center justify-center gap-2 px-3 py-2 rounded-lg border-2 shadow-sm group select-none ${
+                       sosActive || isSevereWeather
+                         ? 'bg-red-50 border-red-400 text-red-700 shadow-red-200 animate-pulse' 
+                         : 'bg-[#fdfbf7] border-red-100 text-red-600 hover:border-red-300 hover:text-red-700'
+                     } ${isHolding ? 'scale-95' : ''}`}
+                     title={sosLatchEnabled ? "Hold for 3s to Activate Beacon" : "Emergency Beacon"}
+                   >
+                     {/* Circular Loading Ring (Visual Latch) */}
+                     {isHolding && !sosActive && (
+                         <div className="absolute inset-0 bg-red-100/30 flex items-center justify-center">
+                             <svg className="w-8 h-8 transform -rotate-90 pointer-events-none">
+                                <circle cx="16" cy="16" r="14" stroke="#fca5a5" strokeWidth="2" fill="none" />
+                                <circle 
+                                    cx="16" cy="16" r="14" stroke="#ef4444" strokeWidth="2" fill="none" 
+                                    strokeDasharray="88" strokeDashoffset={88 - (88 * holdProgress / 100)}
+                                />
+                             </svg>
+                         </div>
+                     )}
+
+                     <Siren className={`w-4 h-4 ${(isSevereWeather || sosActive) ? 'animate-bounce' : (isRailActive ? 'group-hover:animate-ping' : '')} z-10`} />
+                     <span className="text-xs font-black uppercase tracking-wider font-serif z-10">
+                         {isHolding ? "HOLD..." : "S.O.S."}
+                     </span>
+                   </button>
+                   <button 
+                     onClick={() => setConfirmingBreak(true)}
+                     className="flex items-center justify-center w-10 px-3 py-2 bg-[#fdfbf7] hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 rounded-lg border border-slate-200 hover:border-emerald-200 shadow-sm"
+                     title="Shore Leave Protocol (Ask Mascot)"
+                   >
+                     <Palmtree className="w-4 h-4" />
+                   </button>
+               </div>
+
+               <div className="border-t border-slate-200/50 pt-4 flex gap-2">
+                 <button 
+                   onClick={() => setDepthsOpen(true)}
+                   className="flex-1 flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-red-500 hover:bg-red-50/50 rounded-lg cursor-pointer border-2 border-transparent hover:border-dashed hover:border-red-200"
+                 >
+                   <Trash2 className="w-4 h-4 shrink-0" />
+                   <span className="text-sm font-medium whitespace-nowrap overflow-hidden">The Depths</span>
+                 </button>
+                 <button 
+                   onClick={() => setIsBottleOpen(true)}
+                   className="flex items-center justify-center w-10 h-10 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer border border-transparent hover:border-blue-100"
+                   title="Message in a Bottle (Feedback)"
+                 >
+                   <MessageSquare className="w-4 h-4" />
+                 </button>
+               </div>
+            </div>
+          )}
+          
+          <div className={`p-4 border-t border-stone-200 bg-[#fdfbf7]/50 ${renderMini ? 'flex justify-center flex-col gap-2 items-center' : ''}`}>
+            {renderMini && (
+                <>
+                    <button 
+                       onMouseDown={startSosHold}
+                       onMouseUp={endSosHold}
+                       onMouseLeave={endSosHold}
+                       onTouchStart={startSosHold}
+                       onTouchEnd={endSosHold}
+                       className={`mb-2 ${(isSevereWeather || sosActive) ? 'text-red-600 animate-pulse' : 'text-red-400 hover:text-red-600'} ${isHolding ? 'scale-90 opacity-80' : ''}`}
+                       title="S.O.S."
+                     >
+                       <Siren className="w-4 h-4" />
+                     </button>
+                    <button 
+                       onClick={() => setIsBottleOpen(true)}
+                       className="text-blue-400 hover:text-blue-600 mb-2"
+                       title="Feedback"
+                     >
+                       <MessageSquare className="w-4 h-4" />
+                     </button>
+                </>
+            )}
+            
+            {!renderMini ? (
+              <div className="flex items-center justify-between gap-4">
+                <Parrot />
+                
+                <div className="flex flex-col items-end gap-1 flex-1">
+                    {/* The Radio Room (Signal Row) - Clean Deck, no blinking dot */}
+                    <div className="flex items-center gap-2 mb-1 opacity-60 hover:opacity-100 cursor-help" title="Radio Room: Signal Activity">
+                        <div className="flex -space-x-1">
+                            <div className="relative">
+                                <Slack className="w-3 h-3 text-slate-400" />
+                            </div>
+                            <div className="relative">
+                                <Mail className="w-3 h-3 text-slate-400" />
+                            </div>
+                            <div className="relative">
+                                <MessageSquare className="w-3 h-3 text-slate-400" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end w-full gap-3">
+                        <TelemetryDeck onClick={onToggleDevOverlay} />
+                    </div>
+                </div>
+              </div>
+            ) : (
+              <Activity className="w-4 h-4 text-slate-400" />
+            )}
+          </div>
+        </div>
+      </motion.aside>
+    </>
+  );
+};
